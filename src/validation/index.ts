@@ -35,6 +35,10 @@ export const ErrorCodes = {
   ORIENTATION_ROOM_NOT_NEAR_STREET: 'E603',
   ORIENTATION_ROOM_NOT_AWAY_FROM_STREET: 'E604',
   ORIENTATION_NO_GARDEN_VIEW: 'E605',
+  // Courtyard errors
+  ROOM_OVERLAPS_COURTYARD: 'E701',
+  // Connectivity errors
+  ROOMS_NOT_CONNECTED: 'E801',
 } as const;
 
 // ============================================================================
@@ -228,6 +232,162 @@ function validateNoOverlap(lowered: LoweredProgram): ValidationError[] {
     }
   }
 
+  return errors;
+}
+
+function validateNoCourtyardOverlap(lowered: LoweredProgram): ValidationError[] {
+  const errors: ValidationError[] = [];
+  
+  for (const room of lowered.rooms) {
+    for (const courtyard of lowered.courtyards) {
+      if (doPolygonsOverlap(room.polygon, courtyard.polygon)) {
+        errors.push({
+          code: ErrorCodes.ROOM_OVERLAPS_COURTYARD,
+          message: `Room "${room.name}" overlaps with courtyard "${courtyard.name}"`,
+          room: room.name,
+          details: { courtyard: courtyard.name },
+        });
+      }
+    }
+  }
+  
+  return errors;
+}
+
+// ============================================================================
+// Connectivity Validation (rooms_connected assertion)
+// ============================================================================
+
+// Check if two polygons share an edge (are adjacent)
+function polygonsShareEdge(poly1: Point[], poly2: Point[], epsilon = 0.01): boolean {
+  const n1 = poly1.length;
+  const n2 = poly2.length;
+  
+  // Check if any edge of poly1 overlaps with any edge of poly2
+  for (let i = 0; i < n1; i++) {
+    const a1 = poly1[i];
+    const a2 = poly1[(i + 1) % n1];
+    
+    for (let j = 0; j < n2; j++) {
+      const b1 = poly2[j];
+      const b2 = poly2[(j + 1) % n2];
+      
+      if (edgesOverlap(a1, a2, b1, b2, epsilon)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+// Check if two line segments are collinear and overlap
+function edgesOverlap(a1: Point, a2: Point, b1: Point, b2: Point, epsilon: number): boolean {
+  // First check if edges are collinear (on the same line)
+  const isHorizontal1 = Math.abs(a1.y - a2.y) < epsilon;
+  const isHorizontal2 = Math.abs(b1.y - b2.y) < epsilon;
+  const isVertical1 = Math.abs(a1.x - a2.x) < epsilon;
+  const isVertical2 = Math.abs(b1.x - b2.x) < epsilon;
+  
+  if (isHorizontal1 && isHorizontal2 && Math.abs(a1.y - b1.y) < epsilon) {
+    // Both horizontal on same y - check x overlap
+    const minA = Math.min(a1.x, a2.x);
+    const maxA = Math.max(a1.x, a2.x);
+    const minB = Math.min(b1.x, b2.x);
+    const maxB = Math.max(b1.x, b2.x);
+    
+    const overlapStart = Math.max(minA, minB);
+    const overlapEnd = Math.min(maxA, maxB);
+    
+    // Require meaningful overlap (not just a point)
+    return overlapEnd - overlapStart > epsilon;
+  }
+  
+  if (isVertical1 && isVertical2 && Math.abs(a1.x - b1.x) < epsilon) {
+    // Both vertical on same x - check y overlap
+    const minA = Math.min(a1.y, a2.y);
+    const maxA = Math.max(a1.y, a2.y);
+    const minB = Math.min(b1.y, b2.y);
+    const maxB = Math.max(b1.y, b2.y);
+    
+    const overlapStart = Math.max(minA, minB);
+    const overlapEnd = Math.min(maxA, maxB);
+    
+    return overlapEnd - overlapStart > epsilon;
+  }
+  
+  return false;
+}
+
+// Build adjacency graph and check if all rooms are connected
+function validateRoomsConnected(lowered: LoweredProgram, geometry: GeometryIR): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const rooms = lowered.rooms;
+  
+  if (rooms.length <= 1) {
+    return errors; // 0 or 1 room is trivially connected
+  }
+  
+  // Build adjacency list based on shared edges
+  const adjacency = new Map<string, Set<string>>();
+  
+  for (const room of rooms) {
+    adjacency.set(room.name, new Set());
+  }
+  
+  // Check for shared edges between rooms
+  for (let i = 0; i < rooms.length; i++) {
+    for (let j = i + 1; j < rooms.length; j++) {
+      if (polygonsShareEdge(rooms[i].polygon, rooms[j].polygon)) {
+        adjacency.get(rooms[i].name)!.add(rooms[j].name);
+        adjacency.get(rooms[j].name)!.add(rooms[i].name);
+      }
+    }
+  }
+  
+  // Also consider doors as connections (even for rooms that don't share edges)
+  for (const opening of geometry.openings) {
+    if (opening.type === 'door') {
+      const wall = geometry.walls.find(w => w.id === opening.wallId);
+      if (wall && wall.rooms.length === 2) {
+        const [room1, room2] = wall.rooms;
+        adjacency.get(room1)?.add(room2);
+        adjacency.get(room2)?.add(room1);
+      }
+    }
+  }
+  
+  // BFS to find all connected rooms starting from the first room
+  const visited = new Set<string>();
+  const queue = [rooms[0].name];
+  visited.add(rooms[0].name);
+  
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const neighbors = adjacency.get(current) || new Set();
+    
+    for (const neighbor of neighbors) {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        queue.push(neighbor);
+      }
+    }
+  }
+  
+  // Check if all rooms were visited
+  const disconnectedRooms = rooms.filter(r => !visited.has(r.name)).map(r => r.name);
+  
+  if (disconnectedRooms.length > 0) {
+    errors.push({
+      code: ErrorCodes.ROOMS_NOT_CONNECTED,
+      message: `Rooms are not fully connected. Disconnected rooms: ${disconnectedRooms.join(', ')}`,
+      details: { 
+        connectedRooms: Array.from(visited),
+        disconnectedRooms 
+      },
+    });
+  }
+  
   return errors;
 }
 
