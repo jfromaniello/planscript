@@ -1,0 +1,49 @@
+{
+  "name": "planscript",
+  "displayName": "PlanScript",
+  "description": "Syntax highlighting and navigation for PlanScript floor plan language",
+  "version": "0.1.0",
+  "publisher": "planscript",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:planscript"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "planscript",
+        "aliases": [
+          "PlanScript",
+          "planscript",
+          "Floor Plan"
+        ],
+        "extensions": [
+          ".psc"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "planscript",
+        "scopeName": "source.planscript",
+        "path": "./syntaxes/planscript.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^5.3.3"
+  }
+}

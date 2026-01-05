@@ -1,0 +1,478 @@
+{
+  "version": "1.0.0",
+  "geometry": {
+    "footprint": {
+      "points": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 20,
+          "y": 0
+        },
+        {
+          "x": 20,
+          "y": 30
+        },
+        {
+          "x": 0,
+          "y": 30
+        }
+      ]
+    },
+    "rooms": [
+      {
+        "name": "living",
+        "label": "Living Room",
+        "polygon": {
+          "points": [
+            {
+              "x": 1,
+              "y": 1
+            },
+            {
+              "x": 9,
+              "y": 1
+            },
+            {
+              "x": 9,
+              "y": 7
+            },
+            {
+              "x": 1,
+              "y": 7
+            }
+          ]
+        },
+        "area": 48
+      },
+      {
+        "name": "kitchen",
+        "label": "Kitchen",
+        "polygon": {
+          "points": [
+            {
+              "x": 9,
+              "y": 1
+            },
+            {
+              "x": 13,
+              "y": 1
+            },
+            {
+              "x": 13,
+              "y": 7
+            },
+            {
+              "x": 9,
+              "y": 7
+            }
+          ]
+        },
+        "area": 24
+      },
+      {
+        "name": "hall",
+        "label": "Hallway",
+        "polygon": {
+          "points": [
+            {
+              "x": 1,
+              "y": 7
+            },
+            {
+              "x": 13,
+              "y": 7
+            },
+            {
+              "x": 13,
+              "y": 9
+            },
+            {
+              "x": 1,
+              "y": 9
+            }
+          ]
+        },
+        "area": 24
+      },
+      {
+        "name": "bedroom",
+        "label": "Master Bedroom",
+        "polygon": {
+          "points": [
+            {
+              "x": 1,
+              "y": 9
+            },
+            {
+              "x": 4.6,
+              "y": 9
+            },
+            {
+              "x": 4.6,
+              "y": 13
+            },
+            {
+              "x": 1,
+              "y": 13
+            }
+          ]
+        },
+        "area": 14.399999999999999
+      },
+      {
+        "name": "bath",
+        "label": "Bathroom",
+        "polygon": {
+          "points": [
+            {
+              "x": 4.6,
+              "y": 10.8
+            },
+            {
+              "x": 7.199999999999999,
+              "y": 10.8
+            },
+            {
+              "x": 7.199999999999999,
+              "y": 13
+            },
+            {
+              "x": 4.6,
+              "y": 13
+            }
+          ]
+        },
+        "area": 5.720000000000006
+      }
+    ],
+    "walls": [
+      {
+        "id": "wall_0",
+        "start": {
+          "x": 9,
+          "y": 1
+        },
+        "end": {
+          "x": 9,
+          "y": 7
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "living",
+          "kitchen"
+        ]
+      },
+      {
+        "id": "wall_1",
+        "start": {
+          "x": 1,
+          "y": 7
+        },
+        "end": {
+          "x": 9,
+          "y": 7
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "living",
+          "hall"
+        ]
+      },
+      {
+        "id": "wall_2",
+        "start": {
+          "x": 9,
+          "y": 7
+        },
+        "end": {
+          "x": 13,
+          "y": 7
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "kitchen",
+          "hall"
+        ]
+      },
+      {
+        "id": "wall_3",
+        "start": {
+          "x": 1,
+          "y": 9
+        },
+        "end": {
+          "x": 4.6,
+          "y": 9
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "hall",
+          "bedroom"
+        ]
+      },
+      {
+        "id": "wall_4",
+        "start": {
+          "x": 4.6,
+          "y": 10.8
+        },
+        "end": {
+          "x": 4.6,
+          "y": 13
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "bedroom",
+          "bath"
+        ]
+      },
+      {
+        "id": "wall_5",
+        "start": {
+          "x": 1,
+          "y": 1
+        },
+        "end": {
+          "x": 9,
+          "y": 1
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "living"
+        ]
+      },
+      {
+        "id": "wall_6",
+        "start": {
+          "x": 1,
+          "y": 1
+        },
+        "end": {
+          "x": 1,
+          "y": 7
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "living"
+        ]
+      },
+      {
+        "id": "wall_7",
+        "start": {
+          "x": 9,
+          "y": 1
+        },
+        "end": {
+          "x": 13,
+          "y": 1
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "kitchen"
+        ]
+      },
+      {
+        "id": "wall_8",
+        "start": {
+          "x": 13,
+          "y": 1
+        },
+        "end": {
+          "x": 13,
+          "y": 7
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "kitchen"
+        ]
+      },
+      {
+        "id": "wall_9",
+        "start": {
+          "x": 13,
+          "y": 7
+        },
+        "end": {
+          "x": 13,
+          "y": 9
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "hall"
+        ]
+      },
+      {
+        "id": "wall_10",
+        "start": {
+          "x": 4.6,
+          "y": 9
+        },
+        "end": {
+          "x": 13,
+          "y": 9
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "hall"
+        ]
+      },
+      {
+        "id": "wall_11",
+        "start": {
+          "x": 1,
+          "y": 7
+        },
+        "end": {
+          "x": 1,
+          "y": 9
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "hall"
+        ]
+      },
+      {
+        "id": "wall_12",
+        "start": {
+          "x": 4.6,
+          "y": 9
+        },
+        "end": {
+          "x": 4.6,
+          "y": 10.8
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "bedroom"
+        ]
+      },
+      {
+        "id": "wall_13",
+        "start": {
+          "x": 1,
+          "y": 13
+        },
+        "end": {
+          "x": 4.6,
+          "y": 13
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "bedroom"
+        ]
+      },
+      {
+        "id": "wall_14",
+        "start": {
+          "x": 1,
+          "y": 9
+        },
+        "end": {
+          "x": 1,
+          "y": 13
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "bedroom"
+        ]
+      },
+      {
+        "id": "wall_15",
+        "start": {
+          "x": 4.6,
+          "y": 10.8
+        },
+        "end": {
+          "x": 7.199999999999999,
+          "y": 10.8
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "bath"
+        ]
+      },
+      {
+        "id": "wall_16",
+        "start": {
+          "x": 7.199999999999999,
+          "y": 10.8
+        },
+        "end": {
+          "x": 7.199999999999999,
+          "y": 13
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "bath"
+        ]
+      },
+      {
+        "id": "wall_17",
+        "start": {
+          "x": 4.6,
+          "y": 13
+        },
+        "end": {
+          "x": 7.199999999999999,
+          "y": 13
+        },
+        "thickness": 0.15,
+        "isExterior": false,
+        "rooms": [
+          "bath"
+        ]
+      }
+    ],
+    "openings": [
+      {
+        "id": "d1",
+        "type": "door",
+        "wallId": "wall_1",
+        "position": 4.8,
+        "width": 0.9
+      },
+      {
+        "id": "d2",
+        "type": "door",
+        "wallId": "wall_0",
+        "position": 3,
+        "width": 0.9
+      },
+      {
+        "id": "d3",
+        "type": "door",
+        "wallId": "wall_3",
+        "position": 1.7999999999999998,
+        "width": 0.9
+      },
+      {
+        "id": "w1",
+        "type": "window",
+        "wallId": "wall_5",
+        "position": 2,
+        "width": 2.4,
+        "sill": 0.9
+      }
+    ]
+  }
+}

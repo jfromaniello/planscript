@@ -1,0 +1,54 @@
+{
+  "name": "planscript",
+  "version": "0.1.0",
+  "description": "PlanScript - A DSL for defining floor plans",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "planscript": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build:grammar": "peggy --plugin ts-pegjs --extra-options-file src/parser/pegconfig.json -o src/parser/grammar.ts src/parser/grammar.pegjs",
+    "build:ts": "tsc",
+    "build": "npm run build:grammar && npm run build:ts",
+    "dev": "npm run build:grammar && tsc --watch",
+    "test": "npm run build:grammar && vitest run",
+    "test:watch": "npm run build:grammar && vitest",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "planscript",
+    "dsl",
+    "floor-plan",
+    "floorplan",
+    "architecture",
+    "blueprint",
+    "compiler",
+    "svg"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/planscript"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "peggy": "^3.0.2",
+    "ts-pegjs": "^4.2.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}

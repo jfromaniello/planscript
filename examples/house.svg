@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="800" viewBox="0 0 1000 800">
+  <defs>
+    <style>
+      .room-label { font-family: Arial, sans-serif; font-weight: 500; }
+    </style>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1000" height="800" fill="#ffffff" />
+  
+  <!-- Footprint (boundary) -->
+  <path d="M 273.33 740.00 L 726.67 740.00 L 726.67 60.00 L 273.33 60.00 Z" fill="none" stroke="#7f8c8d" stroke-width="2" stroke-dasharray="8,4" />
+  
+  <!-- Rooms -->
+  <path d="M 296.00 717.33 L 477.33 717.33 L 477.33 581.33 L 296.00 581.33 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" />
+    <path d="M 477.33 717.33 L 568.00 717.33 L 568.00 581.33 L 477.33 581.33 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" />
+    <path d="M 296.00 581.33 L 568.00 581.33 L 568.00 536.00 L 296.00 536.00 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" />
+    <path d="M 296.00 536.00 L 377.60 536.00 L 377.60 445.33 L 296.00 445.33 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" />
+    <path d="M 377.60 495.20 L 436.53 495.20 L 436.53 445.33 L 377.60 445.33 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" />
+  
+  <!-- Walls -->
+  <line x1="477.33" y1="717.33" x2="477.33" y2="581.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="296.00" y1="581.33" x2="477.33" y2="581.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="477.33" y1="581.33" x2="568.00" y2="581.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="296.00" y1="536.00" x2="377.60" y2="536.00" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="377.60" y1="495.20" x2="377.60" y2="445.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="296.00" y1="717.33" x2="477.33" y2="717.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="296.00" y1="717.33" x2="296.00" y2="581.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="477.33" y1="717.33" x2="568.00" y2="717.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="568.00" y1="717.33" x2="568.00" y2="581.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="568.00" y1="581.33" x2="568.00" y2="536.00" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="377.60" y1="536.00" x2="568.00" y2="536.00" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="296.00" y1="581.33" x2="296.00" y2="536.00" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="377.60" y1="536.00" x2="377.60" y2="495.20" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="296.00" y1="445.33" x2="377.60" y2="445.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="296.00" y1="536.00" x2="296.00" y2="445.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="377.60" y1="495.20" x2="436.53" y2="495.20" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="436.53" y1="495.20" x2="436.53" y2="445.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+    <line x1="377.60" y1="445.33" x2="436.53" y2="445.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
+  
+  <!-- Openings (doors/windows) -->
+  <line x1="394.60" y1="581.33" x2="415.00" y2="581.33" stroke="#e74c3c" stroke-width="4" stroke-linecap="round" />
+    <line x1="477.33" y1="659.53" x2="477.33" y2="639.13" stroke="#e74c3c" stroke-width="4" stroke-linecap="round" />
+    <line x1="326.60" y1="536.00" x2="347.00" y2="536.00" stroke="#e74c3c" stroke-width="4" stroke-linecap="round" />
+    <line x1="314.13" y1="717.33" x2="368.53" y2="717.33" stroke="#3498db" stroke-width="3" stroke-linecap="round" />
+  
+  <!-- Labels -->
+  <text x="386.67" y="649.33" font-size="14" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">Living Room</text>
+    <text x="522.67" y="649.33" font-size="14" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">Kitchen</text>
+    <text x="432.00" y="558.67" font-size="14" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">Hallway</text>
+    <text x="336.80" y="490.67" font-size="8" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">Master Bedroom</text>
+    <text x="407.07" y="470.27" font-size="10" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">Bathroom</text>
+  
+  <!-- Dimensions -->
+  
+</svg>
