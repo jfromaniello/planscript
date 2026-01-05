@@ -511,6 +511,53 @@ describe('Parser', () => {
         expect(door.swing).toBe('hall');
       }
     });
+
+    it('should parse exterior door on room edge', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room foyer { rect (1,1) (5,5) }
+          opening door d_front {
+            on foyer.edge south
+            at 50%
+            width 1.0
+          }
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.openings).toHaveLength(1);
+      const door = result.plan.openings[0];
+      expect(door.type).toBe('DoorOpening');
+      if (door.type === 'DoorOpening' && 'room' in door) {
+        expect(door.name).toBe('d_front');
+        expect(door.room).toBe('foyer');
+        expect(door.edge).toBe('south');
+        expect(door.at).toEqual({ type: 'percentage', value: 50 });
+        expect(door.width).toBe(1.0);
+      }
+    });
+
+    it('should parse exterior door on all edge sides', () => {
+      const edges = ['north', 'south', 'east', 'west'];
+      for (const edge of edges) {
+        const source = `
+          plan {
+            footprint rect (0,0) (20,20)
+            room foyer { rect (1,1) (5,5) }
+            opening door d1 {
+              on foyer.edge ${edge}
+              at 2.0
+              width 0.9
+            }
+          }
+        `;
+        const result = parse(source);
+        const door = result.plan.openings[0];
+        if (door.type === 'DoorOpening' && 'edge' in door) {
+          expect(door.edge).toBe(edge);
+        }
+      }
+    });
   });
 
   describe('Window Openings', () => {

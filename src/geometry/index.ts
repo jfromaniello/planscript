@@ -322,27 +322,86 @@ function placeOpenings(
 
   for (const opening of openings) {
     if (opening.type === 'DoorOpening') {
-      // Find shared wall between the two rooms
-      const [room1Name, room2Name] = opening.between;
-      const sharedWall = walls.find(
-        (w) => w.rooms.includes(room1Name) && w.rooms.includes(room2Name)
-      );
+      // Check if it's a door between two rooms or on a single room's edge
+      if ('between' in opening) {
+        // Door between two rooms - find shared wall
+        const [room1Name, room2Name] = opening.between;
+        const sharedWall = walls.find(
+          (w) => w.rooms.includes(room1Name) && w.rooms.includes(room2Name)
+        );
 
-      if (sharedWall) {
-        const wallLength = distance(sharedWall.start, sharedWall.end);
-        const position = resolvePosition(opening.at, wallLength);
-        
-        // Use opening width if specified, otherwise use default
-        const width = opening.width || defaults.doorWidth || 0.9;
+        if (sharedWall) {
+          const wallLength = distance(sharedWall.start, sharedWall.end);
+          const position = resolvePosition(opening.at, wallLength);
+          
+          // Use opening width if specified, otherwise use default
+          const width = opening.width || defaults.doorWidth || 0.9;
 
-        placements.push({
-          id: opening.name,
-          type: 'door',
-          wallId: sharedWall.id,
-          position,
-          width,
-          swing: opening.swing,
-        });
+          placements.push({
+            id: opening.name,
+            type: 'door',
+            wallId: sharedWall.id,
+            position,
+            width,
+            swing: opening.swing,
+          });
+        }
+      } else if ('room' in opening && 'edge' in opening) {
+        // Door on a single room's edge (exterior door)
+        const room = rooms.find((r) => r.name === opening.room);
+        if (!room) continue;
+
+        const points = room.polygon.points;
+        let targetWall: WallSegment | undefined;
+
+        for (const wall of walls) {
+          if (!wall.rooms.includes(opening.room)) continue;
+
+          const midX = (wall.start.x + wall.end.x) / 2;
+          const midY = (wall.start.y + wall.end.y) / 2;
+
+          const xs = points.map((p) => p.x);
+          const ys = points.map((p) => p.y);
+          const minX = Math.min(...xs);
+          const maxX = Math.max(...xs);
+          const minY = Math.min(...ys);
+          const maxY = Math.max(...ys);
+
+          const isHorizontal = Math.abs(wall.start.y - wall.end.y) < 1e-10;
+          const isVertical = Math.abs(wall.start.x - wall.end.x) < 1e-10;
+
+          if (opening.edge === 'south' && isHorizontal && Math.abs(midY - minY) < 1e-10) {
+            targetWall = wall;
+            break;
+          }
+          if (opening.edge === 'north' && isHorizontal && Math.abs(midY - maxY) < 1e-10) {
+            targetWall = wall;
+            break;
+          }
+          if (opening.edge === 'west' && isVertical && Math.abs(midX - minX) < 1e-10) {
+            targetWall = wall;
+            break;
+          }
+          if (opening.edge === 'east' && isVertical && Math.abs(midX - maxX) < 1e-10) {
+            targetWall = wall;
+            break;
+          }
+        }
+
+        if (targetWall) {
+          const width = opening.width || defaults.doorWidth || 0.9;
+          const wallLength = distance(targetWall.start, targetWall.end);
+          const position = resolvePosition(opening.at, wallLength);
+          
+          placements.push({
+            id: opening.name,
+            type: 'door',
+            wallId: targetWall.id,
+            position,
+            width,
+            swing: opening.swing,
+          });
+        }
       }
     } else if (opening.type === 'WindowOpening') {
       // Find the wall on the specified edge of the room

@@ -314,36 +314,65 @@ Opening
 DoorOpening
   = "opening"i _ "door"i _ name:Identifier _ "{" _ content:(_ DoorContent)* _ "}" {
       const loc = location();
-      const result: AST.DoorOpening = {
-        type: 'DoorOpening',
-        name,
-        between: ['', ''],
-        on: 'shared_edge',
-        at: { type: 'absolute', value: 0 } as AST.Position,
-        width: 0,
-        span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } }
-      };
+      const span = { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } };
+      
+      // Collect all content items
+      let between: [string, string] | undefined;
+      let roomEdge: { room: string; edge: AST.EdgeSide } | undefined;
+      let at: AST.Position = { type: 'absolute', value: 0 };
+      let width = 0;
+      let swing: string | undefined;
       
       for (const [, item] of content) {
         if (item.type === 'between') {
-          result.between = item.rooms;
-        } else if (item.type === 'on') {
-          result.on = 'shared_edge';
+          between = item.rooms;
+        } else if (item.type === 'onSharedEdge') {
+          // shared_edge marker (used with between)
+        } else if (item.type === 'onRoomEdge') {
+          roomEdge = { room: item.room, edge: item.edge };
         } else if (item.type === 'at') {
-          result.at = item.position;
+          at = item.position;
         } else if (item.type === 'width') {
-          result.width = item.value;
+          width = item.value;
         } else if (item.type === 'swing') {
-          result.swing = item.room;
+          swing = item.room;
         }
       }
       
-      return result;
+      // Return appropriate door type based on content
+      if (roomEdge) {
+        // Door on single room edge (exterior door)
+        const result: AST.DoorOpening = {
+          type: 'DoorOpening',
+          name,
+          room: roomEdge.room,
+          edge: roomEdge.edge,
+          at,
+          width,
+          span
+        };
+        if (swing) result.swing = swing;
+        return result;
+      } else {
+        // Door between two rooms
+        const result: AST.DoorOpening = {
+          type: 'DoorOpening',
+          name,
+          between: between || ['', ''],
+          on: 'shared_edge' as const,
+          at,
+          width,
+          span
+        };
+        if (swing) result.swing = swing;
+        return result;
+      }
     }
 
 DoorContent
   = DoorBetween
-  / DoorOn
+  / DoorOnRoomEdge
+  / DoorOnSharedEdge
   / DoorAt
   / DoorWidth
   / DoorSwing
@@ -353,9 +382,14 @@ DoorBetween
       return { type: 'between', rooms: [room1, room2] as [string, string] };
     }
 
-DoorOn
+DoorOnRoomEdge
+  = "on"i _ room:Identifier "." "edge"i _ edge:EdgeSide {
+      return { type: 'onRoomEdge', room, edge };
+    }
+
+DoorOnSharedEdge
   = "on"i _ "shared_edge"i {
-      return { type: 'on' };
+      return { type: 'onSharedEdge' };
     }
 
 DoorAt

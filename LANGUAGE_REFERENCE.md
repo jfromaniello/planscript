@@ -349,7 +349,7 @@ Openings define doors and windows in walls.
 
 ### Doors
 
-Doors between two rooms:
+#### Interior Door (between two rooms)
 
 ```planscript
 opening door <id> {
@@ -370,13 +370,24 @@ opening door d1 {
 }
 ```
 
-Door on a specific room edge:
+#### Exterior Door (on a room's edge)
+
+For front doors, back doors, or any door on an exterior wall:
 
 ```planscript
 opening door <id> {
   on <room>.edge <direction>
   at <position>
-  width <value>
+  width <value>           # Optional if defaults set
+}
+```
+
+**Example (front door):**
+```planscript
+opening door d_front {
+  on foyer.edge south
+  at 50%
+  width 1.0
 }
 ```
 

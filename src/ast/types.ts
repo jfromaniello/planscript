@@ -202,7 +202,8 @@ export interface PositionPercentage {
 
 export type Position = PositionAbsolute | PositionPercentage;
 
-export interface DoorOpening extends ASTNode {
+// Door between two rooms (on shared wall)
+export interface DoorOpeningBetween extends ASTNode {
   type: 'DoorOpening';
   name: string;
   between: [string, string]; // room names
@@ -211,6 +212,19 @@ export interface DoorOpening extends ASTNode {
   width: number;
   swing?: SwingDirection;
 }
+
+// Door on a single room's edge (exterior door, e.g., front door)
+export interface DoorOpeningEdge extends ASTNode {
+  type: 'DoorOpening';
+  name: string;
+  room: string;
+  edge: EdgeSide;
+  at: Position;
+  width: number;
+  swing?: SwingDirection;
+}
+
+export type DoorOpening = DoorOpeningBetween | DoorOpeningEdge;
 
 export type EdgeSide = 'north' | 'south' | 'east' | 'west';
 
