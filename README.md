@@ -265,12 +265,34 @@ assert min_room_area bedroom >= 12   # minimum area check
 
 ## VS Code Extension
 
-Install the PlanScript VS Code extension for:
+The PlanScript VS Code extension provides:
 - Syntax highlighting
 - Go to Definition (Ctrl+Click)
 - Hover information
 - Document outline
 - Autocomplete
+
+### Installation
+
+**From VS Code Marketplace:**
+1. Open VS Code
+2. Go to Extensions (Ctrl+Shift+X)
+3. Search for "PlanScript"
+4. Click Install
+
+**From GitHub:**
+```bash
+# Clone the extension repo
+git clone https://github.com/TODO_YOUR_USERNAME/vscode-planscript
+cd vscode-planscript
+
+# Install and build
+npm install
+npm run compile
+
+# Install to VS Code
+code --install-extension .
+```
 
 ## License
 
