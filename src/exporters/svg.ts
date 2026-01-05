@@ -1,5 +1,6 @@
-import type { Point } from '../ast/types.js';
+import type { Point, CardinalDirection } from '../ast/types.js';
 import type { GeometryIR, Polygon, WallSegment, OpeningPlacement, ResolvedRoom, ResolvedCourtyard } from '../geometry/types.js';
+import type { SiteInfo } from '../lowering/index.js';
 
 // ============================================================================
 // SVG Export Options
@@ -13,6 +14,7 @@ export interface SVGExportOptions {
   showLabels?: boolean;
   showDimensions?: boolean;
   showFootprintDimensions?: boolean;
+  showCompass?: boolean;  // Show compass/north indicator when site is defined
   backgroundColor?: string;
   wallColor?: string;
   wallWidth?: number;
@@ -31,6 +33,9 @@ export interface SVGExportOptions {
   dimensionFontSize?: number;
   dimensionOffset?: number;
   dimensionStaggerStep?: number;
+  compassSize?: number;
+  compassColor?: string;
+  streetIndicatorColor?: string;
 }
 
 const defaultOptions: Required<SVGExportOptions> = {
@@ -41,6 +46,7 @@ const defaultOptions: Required<SVGExportOptions> = {
   showLabels: true,
   showDimensions: false,
   showFootprintDimensions: true,
+  showCompass: true,
   backgroundColor: '#ffffff',
   wallColor: '#2c3e50',
   wallWidth: 3,
@@ -59,6 +65,9 @@ const defaultOptions: Required<SVGExportOptions> = {
   dimensionFontSize: 10,
   dimensionOffset: 20,
   dimensionStaggerStep: 15,
+  compassSize: 50,
+  compassColor: '#2c3e50',
+  streetIndicatorColor: '#e74c3c',
 };
 
 // ============================================================================
@@ -1124,14 +1133,144 @@ function generateDimensionsSVG(
 }
 
 // ============================================================================
+// Compass / Orientation Indicator
+// ============================================================================
+
+/**
+ * Generate a compass rose showing north direction and optionally the street direction.
+ * The compass is placed in the top-right corner of the SVG.
+ */
+function generateCompassSVG(
+  site: SiteInfo | undefined,
+  opts: Required<SVGExportOptions>
+): string {
+  if (!opts.showCompass || !site) return '';
+  
+  const elements: string[] = [];
+  const size = opts.compassSize;
+  const centerX = opts.width - opts.padding - size / 2;
+  const centerY = opts.padding + size / 2;
+  const arrowLength = size * 0.4;
+  const arrowWidth = size * 0.15;
+  const labelOffset = size * 0.55;
+  
+  // Draw compass circle (optional background)
+  elements.push(
+    `<circle cx="${centerX}" cy="${centerY}" r="${size / 2}" ` +
+    `fill="none" stroke="${opts.compassColor}" stroke-width="1" opacity="0.3" />`
+  );
+  
+  // Draw north arrow (pointing up in SVG = north in plan)
+  // North arrow - filled triangle pointing up
+  const northTip = { x: centerX, y: centerY - arrowLength };
+  const northLeft = { x: centerX - arrowWidth / 2, y: centerY };
+  const northRight = { x: centerX + arrowWidth / 2, y: centerY };
+  
+  elements.push(
+    `<polygon points="${northTip.x},${northTip.y} ${northLeft.x},${northLeft.y} ${northRight.x},${northRight.y}" ` +
+    `fill="${opts.compassColor}" />`
+  );
+  
+  // Draw south arrow - outline only
+  const southTip = { x: centerX, y: centerY + arrowLength };
+  const southLeft = { x: centerX - arrowWidth / 2, y: centerY };
+  const southRight = { x: centerX + arrowWidth / 2, y: centerY };
+  
+  elements.push(
+    `<polygon points="${southTip.x},${southTip.y} ${southLeft.x},${southLeft.y} ${southRight.x},${southRight.y}" ` +
+    `fill="none" stroke="${opts.compassColor}" stroke-width="1" />`
+  );
+  
+  // Draw east/west lines
+  elements.push(
+    `<line x1="${centerX - arrowLength * 0.7}" y1="${centerY}" ` +
+    `x2="${centerX + arrowLength * 0.7}" y2="${centerY}" ` +
+    `stroke="${opts.compassColor}" stroke-width="1" />`
+  );
+  
+  // Cardinal direction labels
+  const fontSize = size * 0.2;
+  elements.push(
+    `<text x="${centerX}" y="${centerY - labelOffset}" ` +
+    `font-size="${fontSize}" fill="${opts.compassColor}" ` +
+    `text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-weight="bold">N</text>`
+  );
+  elements.push(
+    `<text x="${centerX}" y="${centerY + labelOffset}" ` +
+    `font-size="${fontSize * 0.8}" fill="${opts.compassColor}" ` +
+    `text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">S</text>`
+  );
+  elements.push(
+    `<text x="${centerX + labelOffset}" y="${centerY}" ` +
+    `font-size="${fontSize * 0.8}" fill="${opts.compassColor}" ` +
+    `text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">E</text>`
+  );
+  elements.push(
+    `<text x="${centerX - labelOffset}" y="${centerY}" ` +
+    `font-size="${fontSize * 0.8}" fill="${opts.compassColor}" ` +
+    `text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">W</text>`
+  );
+  
+  // Street indicator - small arrow/marker showing street direction
+  const streetArrowLength = size * 0.25;
+  const streetArrowWidth = size * 0.1;
+  
+  // Calculate street arrow position (on the edge of the compass in the street direction)
+  let streetX = centerX;
+  let streetY = centerY;
+  let streetLabel = '';
+  let rotation = 0;
+  
+  switch (site.street) {
+    case 'north':
+      streetY = centerY - arrowLength - 5;
+      streetLabel = 'STREET';
+      rotation = 0;
+      break;
+    case 'south':
+      streetY = centerY + arrowLength + 5;
+      streetLabel = 'STREET';
+      rotation = 0;
+      break;
+    case 'east':
+      streetX = centerX + arrowLength + 5;
+      streetLabel = 'STREET';
+      rotation = 90;
+      break;
+    case 'west':
+      streetX = centerX - arrowLength - 5;
+      streetLabel = 'STREET';
+      rotation = -90;
+      break;
+  }
+  
+  // Draw street indicator
+  const streetFontSize = size * 0.12;
+  const transformAttr = rotation !== 0 
+    ? ` transform="rotate(${rotation}, ${streetX}, ${streetY})"` 
+    : '';
+  
+  // Small street label
+  elements.push(
+    `<text x="${streetX}" y="${streetY}" ` +
+    `font-size="${streetFontSize}" fill="${opts.streetIndicatorColor}" ` +
+    `text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif"` +
+    `${transformAttr}>${streetLabel}</text>`
+  );
+  
+  return `<g class="compass">\n    ${elements.join('\n    ')}\n  </g>`;
+}
+
+// ============================================================================
 // Main Export Function
 // ============================================================================
 
-export function exportSVG(geometry: GeometryIR, options: SVGExportOptions = {}): string {
+export function exportSVG(geometry: GeometryIR, options: SVGExportOptions = {}, site?: SiteInfo): string {
   const opts: Required<SVGExportOptions> = { ...defaultOptions, ...options };
   const transform = createTransform(geometry, opts);
 
   const dimensionsSVG = generateDimensionsSVG(geometry.rooms, geometry.footprint, transform, opts);
+  const compassSVG = generateCompassSVG(site, opts);
   
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${opts.width}" height="${opts.height}" viewBox="0 0 ${opts.width} ${opts.height}">
@@ -1164,6 +1303,9 @@ export function exportSVG(geometry: GeometryIR, options: SVGExportOptions = {}):
   
   <!-- Dimensions -->
   ${dimensionsSVG}
+  
+  <!-- Compass / Orientation -->
+  ${compassSVG}
 </svg>`;
 
   return svg;

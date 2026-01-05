@@ -338,7 +338,8 @@ export interface AssertionRoomsConnected extends ASTNode {
 }
 
 // Orientation assertions - require site declaration
-export type OrientationTarget = 'morning_sun' | 'afternoon_sun' | 'street' | CardinalDirection;
+// good_sun = south in northern hemisphere, north in southern hemisphere (optimal for living spaces)
+export type OrientationTarget = 'morning_sun' | 'afternoon_sun' | 'good_sun' | 'street' | CardinalDirection;
 
 // assert orientation <room> has_window <target>
 export interface AssertionOrientationHasWindow extends ASTNode {

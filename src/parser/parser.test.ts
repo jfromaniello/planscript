@@ -1580,5 +1580,21 @@ describe('Parser', () => {
       );
       expect(orientationAssertions).toHaveLength(3);
     });
+
+    it('should parse has_window good_sun assertion', () => {
+      const source = `
+        site { street west hemisphere north }
+        plan {
+          footprint rect (0, 0) (20, 20)
+          room living { rect (0, 0) (10, 10) }
+          assert orientation living has_window good_sun
+        }
+      `;
+      const result = parse(source);
+      const assertion = result.plan.assertions.find(a => a.type === 'AssertionOrientationHasWindow');
+      if (assertion?.type === 'AssertionOrientationHasWindow') {
+        expect(assertion.target).toBe('good_sun');
+      }
+    });
   });
 });

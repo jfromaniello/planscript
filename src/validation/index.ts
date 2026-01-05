@@ -542,6 +542,8 @@ function resolveOrientationTarget(target: OrientationTarget, site: SiteInfo): Ca
       return [site.morningSun];
     case 'afternoon_sun':
       return [site.afternoonSun];
+    case 'good_sun':
+      return [site.goodSun];
     case 'street':
       return [site.street];
     case 'north':
@@ -570,6 +572,7 @@ function validateOrientationHasWindow(
   if (!hasWindow) {
     const targetLabel = target === 'morning_sun' ? 'morning sun (east)' :
                        target === 'afternoon_sun' ? 'afternoon sun (west)' :
+                       target === 'good_sun' ? `good sun (${site.goodSun})` :
                        target === 'street' ? `street (${site.street})` :
                        target;
     return {
@@ -698,6 +701,9 @@ export function validate(lowered: LoweredProgram, geometry: GeometryIR): Validat
   // Basic polygon validation
   errors.push(...validatePolygons(lowered));
 
+  // Always validate courtyard overlap (rooms should never overlap courtyards)
+  errors.push(...validateNoCourtyardOverlap(lowered));
+
   // Process assertions
   for (const assertion of lowered.assertions) {
     switch (assertion.type) {
@@ -714,7 +720,7 @@ export function validate(lowered: LoweredProgram, geometry: GeometryIR): Validat
         // Handled separately to process all min area assertions
         break;
       case 'AssertionRoomsConnected':
-        // TODO: Implement connectivity check
+        errors.push(...validateRoomsConnected(lowered, geometry));
         break;
       // Orientation assertions handled separately
       case 'AssertionOrientationHasWindow':

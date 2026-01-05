@@ -802,6 +802,7 @@ AssertionOrientationGardenView
 OrientationTarget
   = "morning_sun"i { return 'morning_sun' as AST.OrientationTarget; }
   / "afternoon_sun"i { return 'afternoon_sun' as AST.OrientationTarget; }
+  / "good_sun"i { return 'good_sun' as AST.OrientationTarget; }
   / "street"i { return 'street' as AST.OrientationTarget; }
   / direction:CardinalDirection { return direction as AST.OrientationTarget; }
 

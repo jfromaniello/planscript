@@ -424,5 +424,238 @@ describe('Validation', () => {
       );
       expect(orientationErrors).toHaveLength(0);
     });
+
+    it('should pass has_window good_sun when room has south window (northern hemisphere)', () => {
+      const errors = compileAndValidate(`
+        site { street west hemisphere north }
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (0,0) (10,10) }
+          opening window w1 { on living.edge south at 50% width 2 }
+          assert orientation living has_window good_sun
+        }
+      `);
+      const orientationErrors = errors.filter((e) => e.code === ErrorCodes.ORIENTATION_NO_WINDOW);
+      expect(orientationErrors).toHaveLength(0);
+    });
+
+    it('should fail has_window good_sun when room lacks south window (northern hemisphere)', () => {
+      const errors = compileAndValidate(`
+        site { street west hemisphere north }
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (0,10) (10,20) }
+          opening window w1 { on living.edge north at 50% width 2 }
+          assert orientation living has_window good_sun
+        }
+      `);
+      const orientationErrors = errors.filter((e) => e.code === ErrorCodes.ORIENTATION_NO_WINDOW);
+      expect(orientationErrors.length).toBeGreaterThan(0);
+      expect(orientationErrors[0].message).toContain('good sun (south)');
+    });
+
+    it('should pass has_window good_sun when room has north window (southern hemisphere)', () => {
+      const errors = compileAndValidate(`
+        site { street east hemisphere south }
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (0,10) (10,20) }
+          opening window w1 { on living.edge north at 50% width 2 }
+          assert orientation living has_window good_sun
+        }
+      `);
+      const orientationErrors = errors.filter((e) => e.code === ErrorCodes.ORIENTATION_NO_WINDOW);
+      expect(orientationErrors).toHaveLength(0);
+    });
+
+    it('should fail has_window good_sun when room lacks north window (southern hemisphere)', () => {
+      const errors = compileAndValidate(`
+        site { street east hemisphere south }
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (0,0) (10,10) }
+          opening window w1 { on living.edge south at 50% width 2 }
+          assert orientation living has_window good_sun
+        }
+      `);
+      const orientationErrors = errors.filter((e) => e.code === ErrorCodes.ORIENTATION_NO_WINDOW);
+      expect(orientationErrors.length).toBeGreaterThan(0);
+      expect(orientationErrors[0].message).toContain('good sun (north)');
+    });
+  });
+
+  describe('Courtyard Overlap Validation', () => {
+    it('should pass when rooms do not overlap courtyards', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (30,30)
+          room living { rect (0,0) (10,10) }
+          room dining { rect (20,0) (30,10) }
+          courtyard patio { rect (10,10) (20,20) }
+        }
+      `);
+      const courtyardErrors = errors.filter((e) => e.code === ErrorCodes.ROOM_OVERLAPS_COURTYARD);
+      expect(courtyardErrors).toHaveLength(0);
+    });
+
+    it('should fail when room overlaps courtyard', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (30,30)
+          room living { rect (5,5) (15,15) }
+          courtyard patio { rect (10,10) (20,20) }
+        }
+      `);
+      const courtyardErrors = errors.filter((e) => e.code === ErrorCodes.ROOM_OVERLAPS_COURTYARD);
+      expect(courtyardErrors.length).toBeGreaterThan(0);
+      expect(courtyardErrors[0].room).toBe('living');
+      expect(courtyardErrors[0].details?.courtyard).toBe('patio');
+    });
+
+    it('should fail when room is inside courtyard', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (30,30)
+          room small { rect (12,12) (16,16) }
+          courtyard large { rect (10,10) (20,20) }
+        }
+      `);
+      const courtyardErrors = errors.filter((e) => e.code === ErrorCodes.ROOM_OVERLAPS_COURTYARD);
+      expect(courtyardErrors.length).toBeGreaterThan(0);
+    });
+
+    it('should pass when room shares edge with courtyard', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (30,30)
+          room living { rect (0,10) (10,20) }
+          courtyard patio { rect (10,10) (20,20) }
+        }
+      `);
+      const courtyardErrors = errors.filter((e) => e.code === ErrorCodes.ROOM_OVERLAPS_COURTYARD);
+      expect(courtyardErrors).toHaveLength(0);
+    });
+
+    it('should detect multiple room-courtyard overlaps', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (30,30)
+          room living { rect (5,5) (15,15) }
+          room kitchen { rect (12,12) (22,22) }
+          courtyard patio { rect (10,10) (20,20) }
+        }
+      `);
+      const courtyardErrors = errors.filter((e) => e.code === ErrorCodes.ROOM_OVERLAPS_COURTYARD);
+      expect(courtyardErrors.length).toBe(2);
+    });
+  });
+
+  describe('Rooms Connected Assertion', () => {
+    it('should pass when all rooms share edges', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (30,20)
+          room living { rect (0,0) (10,10) }
+          room kitchen { rect (10,0) (20,10) }
+          room dining { rect (20,0) (30,10) }
+          assert rooms_connected
+        }
+      `);
+      const connectErrors = errors.filter((e) => e.code === ErrorCodes.ROOMS_NOT_CONNECTED);
+      expect(connectErrors).toHaveLength(0);
+    });
+
+    it('should pass when rooms are connected in L-shape', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (0,0) (10,10) }
+          room hall { rect (10,0) (15,5) }
+          room kitchen { rect (10,5) (20,15) }
+          assert rooms_connected
+        }
+      `);
+      const connectErrors = errors.filter((e) => e.code === ErrorCodes.ROOMS_NOT_CONNECTED);
+      expect(connectErrors).toHaveLength(0);
+    });
+
+    it('should fail when rooms are disconnected', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (40,20)
+          room living { rect (0,0) (10,10) }
+          room kitchen { rect (30,0) (40,10) }
+          assert rooms_connected
+        }
+      `);
+      const connectErrors = errors.filter((e) => e.code === ErrorCodes.ROOMS_NOT_CONNECTED);
+      expect(connectErrors.length).toBeGreaterThan(0);
+      expect(connectErrors[0].details?.disconnectedRooms).toContain('kitchen');
+    });
+
+    it('should pass with single room', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (0,0) (10,10) }
+          assert rooms_connected
+        }
+      `);
+      const connectErrors = errors.filter((e) => e.code === ErrorCodes.ROOMS_NOT_CONNECTED);
+      expect(connectErrors).toHaveLength(0);
+    });
+
+    it('should pass with no rooms', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (20,20)
+          assert rooms_connected
+        }
+      `);
+      const connectErrors = errors.filter((e) => e.code === ErrorCodes.ROOMS_NOT_CONNECTED);
+      expect(connectErrors).toHaveLength(0);
+    });
+
+    it('should detect island room within connected rooms', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (40,40)
+          room living { rect (0,0) (10,10) }
+          room kitchen { rect (10,0) (20,10) }
+          room dining { rect (20,0) (30,10) }
+          room island { rect (15,20) (25,30) }
+          assert rooms_connected
+        }
+      `);
+      const connectErrors = errors.filter((e) => e.code === ErrorCodes.ROOMS_NOT_CONNECTED);
+      expect(connectErrors.length).toBeGreaterThan(0);
+      expect(connectErrors[0].details?.disconnectedRooms).toContain('island');
+    });
+
+    it('should consider doors as connections', () => {
+      const errors = compileAndValidate(`
+        plan {
+          footprint rect (0,0) (30,15)
+          room living { rect (0,0) (10,10) }
+          room kitchen { rect (10,0) (20,10) }
+          room hall { rect (20,0) (30,10) }
+          opening door d1 {
+            between living and kitchen
+            on shared_edge
+            at 50%
+            width 0.9
+          }
+          opening door d2 {
+            between kitchen and hall
+            on shared_edge
+            at 50%
+            width 0.9
+          }
+          assert rooms_connected
+        }
+      `);
+      const connectErrors = errors.filter((e) => e.code === ErrorCodes.ROOMS_NOT_CONNECTED);
+      expect(connectErrors).toHaveLength(0);
+    });
   });
 });

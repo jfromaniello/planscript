@@ -60,8 +60,9 @@ export interface SiteInfo {
   hemisphere: Hemisphere;         // For solar calculations (default: north)
   // Derived directions
   back: CardinalDirection;        // Opposite of street
-  morningSun: CardinalDirection;  // East in northern hemisphere, west in southern
-  afternoonSun: CardinalDirection; // West in northern hemisphere, east in southern
+  morningSun: CardinalDirection;  // East (sun rises in the east in both hemispheres)
+  afternoonSun: CardinalDirection; // West (sun sets in the west in both hemispheres)
+  goodSun: CardinalDirection;     // South in northern hemisphere, north in southern (optimal for living spaces)
 }
 
 export interface LoweredProgram {
@@ -673,11 +674,15 @@ function getOppositeDirection(dir: CardinalDirection): CardinalDirection {
 }
 
 function deriveSiteInfo(street: CardinalDirection, hemisphere: Hemisphere = 'north'): SiteInfo {
-  // In northern hemisphere: sun rises east, sets west
-  // In southern hemisphere: sun path is through north, so morning is still east
-  // but "good sun" (for living spaces) comes from north instead of south
+  // Sun rises in the east and sets in the west in both hemispheres
   const morningSun: CardinalDirection = 'east';
   const afternoonSun: CardinalDirection = 'west';
+  
+  // In the northern hemisphere, the sun's path is through the southern sky,
+  // so south-facing windows get the most daylight (optimal for living spaces).
+  // In the southern hemisphere, the sun's path is through the northern sky,
+  // so north-facing windows get the most daylight.
+  const goodSun: CardinalDirection = hemisphere === 'north' ? 'south' : 'north';
   
   return {
     street,
@@ -685,6 +690,7 @@ function deriveSiteInfo(street: CardinalDirection, hemisphere: Hemisphere = 'nor
     back: getOppositeDirection(street),
     morningSun,
     afternoonSun,
+    goodSun,
   };
 }
 

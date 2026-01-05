@@ -12,6 +12,13 @@ describe('SVG Exporter', () => {
     return generateGeometry(lowered);
   }
 
+  function compileWithSite(source: string) {
+    const ast = parse(source);
+    const lowered = lower(ast);
+    const geometry = generateGeometry(lowered);
+    return { geometry, site: lowered.site };
+  }
+
   describe('Basic SVG Generation', () => {
     it('should generate valid SVG', () => {
       const geometry = compileToGeometry(`
@@ -387,6 +394,82 @@ describe('SVG Exporter', () => {
       const svg = exportSVG(geometry);
 
       expect(svg).toContain('<!-- Openings');
+    });
+  });
+
+  describe('Compass / Orientation Indicator', () => {
+    it('should render compass when site is defined', () => {
+      const { geometry, site } = compileWithSite(`
+        site { street south }
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (0,0) (10,10) }
+        }
+      `);
+      const svg = exportSVG(geometry, { showCompass: true }, site);
+
+      expect(svg).toContain('<!-- Compass');
+      expect(svg).toContain('class="compass"');
+      expect(svg).toContain('>N<');  // North label
+      expect(svg).toContain('>S<');  // South label
+      expect(svg).toContain('>E<');  // East label
+      expect(svg).toContain('>W<');  // West label
+    });
+
+    it('should show street indicator with street direction', () => {
+      const { geometry, site } = compileWithSite(`
+        site { street south }
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (0,0) (10,10) }
+        }
+      `);
+      const svg = exportSVG(geometry, { showCompass: true }, site);
+
+      expect(svg).toContain('STREET');
+    });
+
+    it('should not render compass when site is not defined', () => {
+      const geometry = compileToGeometry(`
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (0,0) (10,10) }
+        }
+      `);
+      const svg = exportSVG(geometry, { showCompass: true });
+
+      expect(svg).not.toContain('class="compass"');
+    });
+
+    it('should not render compass when showCompass is false', () => {
+      const { geometry, site } = compileWithSite(`
+        site { street north }
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (0,0) (10,10) }
+        }
+      `);
+      const svg = exportSVG(geometry, { showCompass: false }, site);
+
+      expect(svg).not.toContain('class="compass"');
+    });
+
+    it('should use custom compass colors', () => {
+      const { geometry, site } = compileWithSite(`
+        site { street east }
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (0,0) (10,10) }
+        }
+      `);
+      const svg = exportSVG(geometry, {
+        showCompass: true,
+        compassColor: '#123456',
+        streetIndicatorColor: '#ABCDEF',
+      }, site);
+
+      expect(svg).toContain('#123456');
+      expect(svg).toContain('#ABCDEF');
     });
   });
 });

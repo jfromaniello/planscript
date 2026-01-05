@@ -119,7 +119,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   };
 
   if (options.emitSVG !== false) {
-    result.svg = exportSVG(geometry, options.svgOptions);
+    result.svg = exportSVG(geometry, options.svgOptions, lowered.site);
   }
 
   if (options.emitJSON) {

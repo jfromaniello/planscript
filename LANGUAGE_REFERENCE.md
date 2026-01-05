@@ -861,6 +861,33 @@ assert min_room_area <room_id> >= <value>
 assert min_room_area bedroom >= 12.0
 ```
 
+### Rooms Connected
+
+Ensures all rooms in the floor plan are connected (reachable from each other via shared edges or doors):
+
+```planscript
+assert rooms_connected
+```
+
+This validation uses a graph-based connectivity check:
+- Rooms that share an edge are considered connected
+- Doors between rooms also establish connectivity
+- All rooms must be reachable from any other room
+
+**Example:**
+```planscript
+plan "Connected House" {
+  footprint rect (0, 0) (20, 20)
+  
+  room living { rect (0, 0) (10, 10) }
+  room kitchen { rect (10, 0) (20, 10) }
+  room bedroom { rect (0, 10) (10, 20) }
+  
+  # All rooms share edges, so they're connected
+  assert rooms_connected
+}
+```
+
 ### Orientation Assertions
 
 Orientation assertions require a `site` declaration. They validate that rooms have appropriate solar orientation or proximity to the street.
@@ -879,6 +906,7 @@ assert orientation <room_id> has_window <target>
 | `north`, `south`, `east`, `west` | Cardinal direction |
 | `morning_sun` | East (for bedrooms - wake up with natural light) |
 | `afternoon_sun` | West (for living areas - evening light) |
+| `good_sun` | South in northern hemisphere, north in southern (optimal daylight for living spaces) |
 | `street` | Same as the street direction from site |
 
 **Examples:**
@@ -886,6 +914,7 @@ assert orientation <room_id> has_window <target>
 assert orientation master has_window east         # Morning light
 assert orientation living has_window afternoon_sun # Evening light
 assert orientation bedroom has_window morning_sun  # Natural alarm clock
+assert orientation living has_window good_sun     # Optimal daylight (hemisphere-aware)
 ```
 
 #### Near Street
