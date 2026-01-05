@@ -1,5 +1,5 @@
-import type { Point } from '../ast/types.js';
-import type { LoweredProgram } from '../lowering/index.js';
+import type { Point, CardinalDirection, OrientationTarget, EdgeSide } from '../ast/types.js';
+import type { LoweredProgram, SiteInfo } from '../lowering/index.js';
 import type { GeometryIR } from '../geometry/types.js';
 import { calculatePolygonArea } from '../geometry/index.js';
 
@@ -29,6 +29,12 @@ export const ErrorCodes = {
   ROOM_NO_ACCESS: 'E420',
   MIN_AREA_VIOLATION: 'E501',
   ZERO_AREA: 'E502',
+  // Orientation errors
+  ORIENTATION_NO_SITE: 'E601',
+  ORIENTATION_NO_WINDOW: 'E602',
+  ORIENTATION_ROOM_NOT_NEAR_STREET: 'E603',
+  ORIENTATION_ROOM_NOT_AWAY_FROM_STREET: 'E604',
+  ORIENTATION_NO_GARDEN_VIEW: 'E605',
 } as const;
 
 // ============================================================================
@@ -266,6 +272,263 @@ function validateMinRoomArea(lowered: LoweredProgram): ValidationError[] {
 }
 
 // ============================================================================
+// Orientation Validation Helpers
+// ============================================================================
+
+// Convert EdgeSide to CardinalDirection (they're the same values)
+function edgeSideToCardinal(edge: EdgeSide): CardinalDirection {
+  return edge as CardinalDirection;
+}
+
+// Get all window directions for a room
+function getRoomWindowDirections(roomName: string, geometry: GeometryIR): CardinalDirection[] {
+  const directions: CardinalDirection[] = [];
+  
+  for (const opening of geometry.openings) {
+    if (opening.type !== 'window') continue;
+    
+    // Find the wall this window is on
+    const wall = geometry.walls.find(w => w.id === opening.wallId);
+    if (!wall || !wall.rooms.includes(roomName)) continue;
+    
+    // Find the room to determine which edge this wall is on
+    const room = geometry.rooms.find(r => r.name === roomName);
+    if (!room) continue;
+    
+    // Determine wall direction based on wall orientation and room bounds
+    const direction = getWallDirection(wall, room);
+    if (direction) {
+      directions.push(direction);
+    }
+  }
+  
+  return directions;
+}
+
+// Determine which cardinal direction a wall faces for a given room
+function getWallDirection(
+  wall: GeometryIR['walls'][0], 
+  room: GeometryIR['rooms'][0]
+): CardinalDirection | null {
+  const points = room.polygon.points;
+  const xs = points.map(p => p.x);
+  const ys = points.map(p => p.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  
+  const midX = (wall.start.x + wall.end.x) / 2;
+  const midY = (wall.start.y + wall.end.y) / 2;
+  const epsilon = 0.01;
+  
+  const isHorizontal = Math.abs(wall.start.y - wall.end.y) < epsilon;
+  const isVertical = Math.abs(wall.start.x - wall.end.x) < epsilon;
+  
+  if (isHorizontal) {
+    if (Math.abs(midY - maxY) < epsilon) return 'north';
+    if (Math.abs(midY - minY) < epsilon) return 'south';
+  }
+  if (isVertical) {
+    if (Math.abs(midX - maxX) < epsilon) return 'east';
+    if (Math.abs(midX - minX) < epsilon) return 'west';
+  }
+  
+  return null;
+}
+
+// Check if room is "near" a direction (has an edge on that side of footprint)
+function isRoomNearDirection(
+  roomName: string, 
+  direction: CardinalDirection, 
+  lowered: LoweredProgram
+): boolean {
+  const room = lowered.rooms.find(r => r.name === roomName);
+  if (!room) return false;
+  
+  const footprint = lowered.footprint;
+  const fpXs = footprint.map(p => p.x);
+  const fpYs = footprint.map(p => p.y);
+  const fpMinX = Math.min(...fpXs);
+  const fpMaxX = Math.max(...fpXs);
+  const fpMinY = Math.min(...fpYs);
+  const fpMaxY = Math.max(...fpYs);
+  
+  const roomXs = room.polygon.map(p => p.x);
+  const roomYs = room.polygon.map(p => p.y);
+  const roomMinX = Math.min(...roomXs);
+  const roomMaxX = Math.max(...roomXs);
+  const roomMinY = Math.min(...roomYs);
+  const roomMaxY = Math.max(...roomYs);
+  
+  const tolerance = 0.5; // Allow some tolerance for "near"
+  
+  switch (direction) {
+    case 'north':
+      return Math.abs(roomMaxY - fpMaxY) < tolerance;
+    case 'south':
+      return Math.abs(roomMinY - fpMinY) < tolerance;
+    case 'east':
+      return Math.abs(roomMaxX - fpMaxX) < tolerance;
+    case 'west':
+      return Math.abs(roomMinX - fpMinX) < tolerance;
+  }
+}
+
+// Resolve orientation target to actual cardinal direction(s)
+function resolveOrientationTarget(target: OrientationTarget, site: SiteInfo): CardinalDirection[] {
+  switch (target) {
+    case 'morning_sun':
+      return [site.morningSun];
+    case 'afternoon_sun':
+      return [site.afternoonSun];
+    case 'street':
+      return [site.street];
+    case 'north':
+    case 'south':
+    case 'east':
+    case 'west':
+      return [target];
+  }
+}
+
+// ============================================================================
+// Orientation Validation Functions
+// ============================================================================
+
+function validateOrientationHasWindow(
+  roomName: string,
+  target: OrientationTarget,
+  site: SiteInfo,
+  geometry: GeometryIR
+): ValidationError | null {
+  const targetDirections = resolveOrientationTarget(target, site);
+  const windowDirections = getRoomWindowDirections(roomName, geometry);
+  
+  const hasWindow = targetDirections.some(dir => windowDirections.includes(dir));
+  
+  if (!hasWindow) {
+    const targetLabel = target === 'morning_sun' ? 'morning sun (east)' :
+                       target === 'afternoon_sun' ? 'afternoon sun (west)' :
+                       target === 'street' ? `street (${site.street})` :
+                       target;
+    return {
+      code: ErrorCodes.ORIENTATION_NO_WINDOW,
+      message: `Room "${roomName}" does not have a window facing ${targetLabel}`,
+      room: roomName,
+      details: { target, targetDirections, actualDirections: windowDirections },
+    };
+  }
+  
+  return null;
+}
+
+function validateOrientationNearStreet(
+  roomName: string,
+  site: SiteInfo,
+  lowered: LoweredProgram
+): ValidationError | null {
+  if (!isRoomNearDirection(roomName, site.street, lowered)) {
+    return {
+      code: ErrorCodes.ORIENTATION_ROOM_NOT_NEAR_STREET,
+      message: `Room "${roomName}" is not near the street (${site.street})`,
+      room: roomName,
+      details: { streetDirection: site.street },
+    };
+  }
+  return null;
+}
+
+function validateOrientationAwayFromStreet(
+  roomName: string,
+  site: SiteInfo,
+  lowered: LoweredProgram
+): ValidationError | null {
+  // Room should be near the back (opposite of street)
+  if (!isRoomNearDirection(roomName, site.back, lowered)) {
+    return {
+      code: ErrorCodes.ORIENTATION_ROOM_NOT_AWAY_FROM_STREET,
+      message: `Room "${roomName}" is not away from the street (should be near ${site.back})`,
+      room: roomName,
+      details: { streetDirection: site.street, backDirection: site.back },
+    };
+  }
+  return null;
+}
+
+function validateOrientationGardenView(
+  roomName: string,
+  site: SiteInfo,
+  geometry: GeometryIR
+): ValidationError | null {
+  // Garden view means window facing back (opposite of street)
+  const windowDirections = getRoomWindowDirections(roomName, geometry);
+  
+  if (!windowDirections.includes(site.back)) {
+    return {
+      code: ErrorCodes.ORIENTATION_NO_GARDEN_VIEW,
+      message: `Room "${roomName}" does not have a window with garden view (facing ${site.back})`,
+      room: roomName,
+      details: { backDirection: site.back, actualDirections: windowDirections },
+    };
+  }
+  return null;
+}
+
+function validateOrientationAssertions(
+  lowered: LoweredProgram,
+  geometry: GeometryIR
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  
+  for (const assertion of lowered.assertions) {
+    // Check if site is required but not provided
+    if (assertion.type.startsWith('AssertionOrientation') && !lowered.site) {
+      errors.push({
+        code: ErrorCodes.ORIENTATION_NO_SITE,
+        message: 'Orientation assertions require a site declaration with street direction',
+      });
+      return errors; // No point checking further
+    }
+    
+    const site = lowered.site!;
+    
+    switch (assertion.type) {
+      case 'AssertionOrientationHasWindow': {
+        const error = validateOrientationHasWindow(
+          assertion.room,
+          assertion.target,
+          site,
+          geometry
+        );
+        if (error) errors.push(error);
+        break;
+      }
+      
+      case 'AssertionOrientationNearStreet': {
+        const error = validateOrientationNearStreet(assertion.room, site, lowered);
+        if (error) errors.push(error);
+        break;
+      }
+      
+      case 'AssertionOrientationAwayFromStreet': {
+        const error = validateOrientationAwayFromStreet(assertion.room, site, lowered);
+        if (error) errors.push(error);
+        break;
+      }
+      
+      case 'AssertionOrientationGardenView': {
+        const error = validateOrientationGardenView(assertion.room, site, geometry);
+        if (error) errors.push(error);
+        break;
+      }
+    }
+  }
+  
+  return errors;
+}
+
+// ============================================================================
 // Main Validation Function
 // ============================================================================
 
@@ -293,11 +556,20 @@ export function validate(lowered: LoweredProgram, geometry: GeometryIR): Validat
       case 'AssertionRoomsConnected':
         // TODO: Implement connectivity check
         break;
+      // Orientation assertions handled separately
+      case 'AssertionOrientationHasWindow':
+      case 'AssertionOrientationNearStreet':
+      case 'AssertionOrientationAwayFromStreet':
+      case 'AssertionOrientationGardenView':
+        break;
     }
   }
 
   // Validate min room areas
   errors.push(...validateMinRoomArea(lowered));
+
+  // Validate orientation assertions
+  errors.push(...validateOrientationAssertions(lowered, geometry));
 
   return errors;
 }

@@ -19,6 +19,8 @@ import type {
   SizeValue,
   ZoneDefinition,
   CourtyardDefinition,
+  CardinalDirection,
+  Hemisphere,
 } from '../ast/types.js';
 
 // ============================================================================
@@ -52,6 +54,16 @@ export interface Defaults {
   windowWidth?: number;
 }
 
+// Site configuration for orientation-based validations
+export interface SiteInfo {
+  street: CardinalDirection;      // Which direction the street/front faces
+  hemisphere: Hemisphere;         // For solar calculations (default: north)
+  // Derived directions
+  back: CardinalDirection;        // Opposite of street
+  morningSun: CardinalDirection;  // East in northern hemisphere, west in southern
+  afternoonSun: CardinalDirection; // West in northern hemisphere, east in southern
+}
+
 export interface LoweredProgram {
   name: string;
   footprint: Point[];
@@ -61,6 +73,7 @@ export interface LoweredProgram {
   wallOverrides: Program['plan']['wallOverrides'];
   assertions: Program['plan']['assertions'];
   defaults: Defaults;
+  site?: SiteInfo;
 }
 
 // ============================================================================
@@ -647,6 +660,35 @@ function lowerCourtyard(courtyard: CourtyardDefinition): LoweredCourtyard {
 }
 
 // ============================================================================
+// Site Info Helpers
+// ============================================================================
+
+function getOppositeDirection(dir: CardinalDirection): CardinalDirection {
+  switch (dir) {
+    case 'north': return 'south';
+    case 'south': return 'north';
+    case 'east': return 'west';
+    case 'west': return 'east';
+  }
+}
+
+function deriveSiteInfo(street: CardinalDirection, hemisphere: Hemisphere = 'north'): SiteInfo {
+  // In northern hemisphere: sun rises east, sets west
+  // In southern hemisphere: sun path is through north, so morning is still east
+  // but "good sun" (for living spaces) comes from north instead of south
+  const morningSun: CardinalDirection = 'east';
+  const afternoonSun: CardinalDirection = 'west';
+  
+  return {
+    street,
+    hemisphere,
+    back: getOppositeDirection(street),
+    morningSun,
+    afternoonSun,
+  };
+}
+
+// ============================================================================
 // Main Lowering Function
 // ============================================================================
 
@@ -696,6 +738,12 @@ export function lower(program: Program): LoweredProgram {
     }
   }
 
+  // Derive site info if site declaration present
+  let site: SiteInfo | undefined;
+  if (program.site) {
+    site = deriveSiteInfo(program.site.street, program.site.hemisphere ?? 'north');
+  }
+
   return {
     name: plan.name,
     footprint,
@@ -705,5 +753,6 @@ export function lower(program: Program): LoweredProgram {
     wallOverrides: plan.wallOverrides,
     assertions: plan.assertions,
     defaults,
+    site,
   };
 }

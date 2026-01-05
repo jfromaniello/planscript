@@ -1395,4 +1395,190 @@ describe('Parser', () => {
       expect(result.plan.courtyards).toHaveLength(1);
     });
   });
+
+  describe('Site Declaration', () => {
+    it('should parse site with street direction', () => {
+      const source = `
+        site {
+          street south
+        }
+        plan {
+          footprint rect (0, 0) (20, 20)
+          room living { rect (0, 0) (10, 10) }
+        }
+      `;
+      const result = parse(source);
+      expect(result.site).toBeDefined();
+      expect(result.site?.street).toBe('south');
+    });
+
+    it('should parse site with hemisphere', () => {
+      const source = `
+        site {
+          street north
+          hemisphere south
+        }
+        plan {
+          footprint rect (0, 0) (20, 20)
+          room living { rect (0, 0) (10, 10) }
+        }
+      `;
+      const result = parse(source);
+      expect(result.site?.street).toBe('north');
+      expect(result.site?.hemisphere).toBe('south');
+    });
+
+    it('should parse all cardinal directions for street', () => {
+      const directions = ['north', 'south', 'east', 'west'];
+      for (const dir of directions) {
+        const source = `
+          site { street ${dir} }
+          plan { footprint rect (0,0) (10,10) }
+        `;
+        const result = parse(source);
+        expect(result.site?.street).toBe(dir);
+      }
+    });
+
+    it('should work with other declarations', () => {
+      const source = `
+        units m
+        defaults { door_width 0.9 }
+        site { street south }
+        plan {
+          footprint rect (0, 0) (20, 20)
+          room living { rect (0, 0) (10, 10) }
+        }
+      `;
+      const result = parse(source);
+      expect(result.units?.unit).toBe('m');
+      expect(result.defaults?.doorWidth).toBe(0.9);
+      expect(result.site?.street).toBe('south');
+    });
+  });
+
+  describe('Orientation Assertions', () => {
+    it('should parse has_window assertion with cardinal direction', () => {
+      const source = `
+        site { street south }
+        plan {
+          footprint rect (0, 0) (20, 20)
+          room master { rect (0, 10) (10, 20) }
+          assert orientation master has_window east
+        }
+      `;
+      const result = parse(source);
+      const assertion = result.plan.assertions.find(a => a.type === 'AssertionOrientationHasWindow');
+      expect(assertion).toBeDefined();
+      if (assertion?.type === 'AssertionOrientationHasWindow') {
+        expect(assertion.room).toBe('master');
+        expect(assertion.target).toBe('east');
+      }
+    });
+
+    it('should parse has_window assertion with morning_sun', () => {
+      const source = `
+        site { street south }
+        plan {
+          footprint rect (0, 0) (20, 20)
+          room bedroom { rect (0, 0) (10, 10) }
+          assert orientation bedroom has_window morning_sun
+        }
+      `;
+      const result = parse(source);
+      const assertion = result.plan.assertions.find(a => a.type === 'AssertionOrientationHasWindow');
+      expect(assertion).toBeDefined();
+      if (assertion?.type === 'AssertionOrientationHasWindow') {
+        expect(assertion.target).toBe('morning_sun');
+      }
+    });
+
+    it('should parse has_window assertion with afternoon_sun', () => {
+      const source = `
+        site { street south }
+        plan {
+          footprint rect (0, 0) (20, 20)
+          room living { rect (0, 0) (10, 10) }
+          assert orientation living has_window afternoon_sun
+        }
+      `;
+      const result = parse(source);
+      const assertion = result.plan.assertions.find(a => a.type === 'AssertionOrientationHasWindow');
+      if (assertion?.type === 'AssertionOrientationHasWindow') {
+        expect(assertion.target).toBe('afternoon_sun');
+      }
+    });
+
+    it('should parse near street assertion', () => {
+      const source = `
+        site { street south }
+        plan {
+          footprint rect (0, 0) (20, 20)
+          room garage { rect (0, 0) (6, 6) }
+          assert orientation garage near street
+        }
+      `;
+      const result = parse(source);
+      const assertion = result.plan.assertions.find(a => a.type === 'AssertionOrientationNearStreet');
+      expect(assertion).toBeDefined();
+      if (assertion?.type === 'AssertionOrientationNearStreet') {
+        expect(assertion.room).toBe('garage');
+      }
+    });
+
+    it('should parse away_from street assertion', () => {
+      const source = `
+        site { street south }
+        plan {
+          footprint rect (0, 0) (20, 20)
+          room laundry { rect (0, 14) (6, 20) }
+          assert orientation laundry away_from street
+        }
+      `;
+      const result = parse(source);
+      const assertion = result.plan.assertions.find(a => a.type === 'AssertionOrientationAwayFromStreet');
+      expect(assertion).toBeDefined();
+      if (assertion?.type === 'AssertionOrientationAwayFromStreet') {
+        expect(assertion.room).toBe('laundry');
+      }
+    });
+
+    it('should parse garden_view assertion', () => {
+      const source = `
+        site { street south }
+        plan {
+          footprint rect (0, 0) (20, 20)
+          room living { rect (0, 10) (10, 20) }
+          assert orientation living garden_view
+        }
+      `;
+      const result = parse(source);
+      const assertion = result.plan.assertions.find(a => a.type === 'AssertionOrientationGardenView');
+      expect(assertion).toBeDefined();
+      if (assertion?.type === 'AssertionOrientationGardenView') {
+        expect(assertion.room).toBe('living');
+      }
+    });
+
+    it('should parse multiple orientation assertions', () => {
+      const source = `
+        site { street south }
+        plan {
+          footprint rect (0, 0) (20, 20)
+          room master { rect (10, 10) (20, 20) }
+          room garage { rect (0, 0) (8, 6) }
+          room living { rect (0, 10) (10, 20) }
+          
+          assert orientation master has_window east
+          assert orientation garage near street
+          assert orientation living garden_view
+        }
+      `;
+      const result = parse(source);
+      const orientationAssertions = result.plan.assertions.filter(a => 
+        a.type.startsWith('AssertionOrientation')
+      );
+      expect(orientationAssertions).toHaveLength(3);
+    });
+  });
 });

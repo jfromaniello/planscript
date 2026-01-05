@@ -7,7 +7,7 @@
 // ============================================================================
 
 Program
-  = _ units:UnitsDeclaration? _ origin:OriginDeclaration? _ axis:AxisDeclaration? _ grid:GridDeclaration? _ defaults:DefaultsDeclaration? _ plan:PlanDefinition _ {
+  = _ units:UnitsDeclaration? _ origin:OriginDeclaration? _ axis:AxisDeclaration? _ grid:GridDeclaration? _ defaults:DefaultsDeclaration? _ site:SiteDeclaration? _ plan:PlanDefinition _ {
       const loc = location();
       return {
         type: 'Program',
@@ -16,6 +16,7 @@ Program
         axis: axis ?? undefined,
         grid: grid ?? undefined,
         defaults: defaults ?? undefined,
+        site: site ?? undefined,
         plan,
         span: {
           start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset },
@@ -98,6 +99,54 @@ DefaultsWindowWidth
   = "window_width"i _ value:Number {
       return { type: 'windowWidth', value };
     }
+
+// ============================================================================
+// Site Configuration (Orientation and Context)
+// ============================================================================
+
+SiteDeclaration
+  = "site"i _ "{" _ content:(_ SiteContent)* _ "}" {
+      const loc = location();
+      const result: AST.SiteDeclaration = {
+        type: 'SiteDeclaration',
+        street: 'south', // default
+        span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } }
+      };
+      
+      for (const [, item] of content) {
+        if (item.type === 'street') {
+          result.street = item.direction;
+        } else if (item.type === 'hemisphere') {
+          result.hemisphere = item.value;
+        }
+      }
+      
+      return result;
+    }
+
+SiteContent
+  = SiteStreet
+  / SiteHemisphere
+
+SiteStreet
+  = "street"i _ direction:CardinalDirection {
+      return { type: 'street', direction };
+    }
+
+SiteHemisphere
+  = "hemisphere"i _ value:Hemisphere {
+      return { type: 'hemisphere', value };
+    }
+
+CardinalDirection
+  = "north"i { return 'north' as AST.CardinalDirection; }
+  / "south"i { return 'south' as AST.CardinalDirection; }
+  / "east"i { return 'east' as AST.CardinalDirection; }
+  / "west"i { return 'west' as AST.CardinalDirection; }
+
+Hemisphere
+  = "north"i { return 'north' as AST.Hemisphere; }
+  / "south"i { return 'south' as AST.Hemisphere; }
 
 // ============================================================================
 // Plan Definition
@@ -689,6 +738,10 @@ Assertion
   / AssertionOpeningsOnWalls
   / AssertionMinRoomArea
   / AssertionRoomsConnected
+  / AssertionOrientationHasWindow
+  / AssertionOrientationNearStreet
+  / AssertionOrientationAwayFromStreet
+  / AssertionOrientationGardenView
 
 AssertionInsideFootprint
   = "assert"i _ "inside"i _ "footprint"i _ target:("all_rooms"i / Identifier) {
@@ -720,6 +773,37 @@ AssertionRoomsConnected
       const loc = location();
       return { type: 'AssertionRoomsConnected', span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.AssertionRoomsConnected;
     }
+
+// Orientation assertions (require site declaration)
+AssertionOrientationHasWindow
+  = "assert"i _ "orientation"i _ room:Identifier _ "has_window"i _ target:OrientationTarget {
+      const loc = location();
+      return { type: 'AssertionOrientationHasWindow', room, target, span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.AssertionOrientationHasWindow;
+    }
+
+AssertionOrientationNearStreet
+  = "assert"i _ "orientation"i _ room:Identifier _ "near"i _ "street"i {
+      const loc = location();
+      return { type: 'AssertionOrientationNearStreet', room, span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.AssertionOrientationNearStreet;
+    }
+
+AssertionOrientationAwayFromStreet
+  = "assert"i _ "orientation"i _ room:Identifier _ "away_from"i _ "street"i {
+      const loc = location();
+      return { type: 'AssertionOrientationAwayFromStreet', room, span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.AssertionOrientationAwayFromStreet;
+    }
+
+AssertionOrientationGardenView
+  = "assert"i _ "orientation"i _ room:Identifier _ "garden_view"i {
+      const loc = location();
+      return { type: 'AssertionOrientationGardenView', room, span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.AssertionOrientationGardenView;
+    }
+
+OrientationTarget
+  = "morning_sun"i { return 'morning_sun' as AST.OrientationTarget; }
+  / "afternoon_sun"i { return 'afternoon_sun' as AST.OrientationTarget; }
+  / "street"i { return 'street' as AST.OrientationTarget; }
+  / direction:CardinalDirection { return direction as AST.OrientationTarget; }
 
 // ============================================================================
 // Primitives

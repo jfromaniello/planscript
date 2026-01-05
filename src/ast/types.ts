@@ -63,6 +63,19 @@ export interface DefaultsDeclaration extends ASTNode {
 }
 
 // ============================================================================
+// Site Configuration (Orientation and Context)
+// ============================================================================
+
+export type CardinalDirection = 'north' | 'south' | 'east' | 'west';
+export type Hemisphere = 'north' | 'south';
+
+export interface SiteDeclaration extends ASTNode {
+  type: 'SiteDeclaration';
+  street: CardinalDirection;        // Which direction the street/front faces
+  hemisphere?: Hemisphere;          // For solar calculations (default: north)
+}
+
+// ============================================================================
 // Footprint
 // ============================================================================
 
@@ -324,12 +337,47 @@ export interface AssertionRoomsConnected extends ASTNode {
   type: 'AssertionRoomsConnected';
 }
 
+// Orientation assertions - require site declaration
+export type OrientationTarget = 'morning_sun' | 'afternoon_sun' | 'street' | CardinalDirection;
+
+// assert orientation <room> has_window <target>
+export interface AssertionOrientationHasWindow extends ASTNode {
+  type: 'AssertionOrientationHasWindow';
+  room: string;
+  target: OrientationTarget;
+}
+
+// assert orientation <room> near street
+export interface AssertionOrientationNearStreet extends ASTNode {
+  type: 'AssertionOrientationNearStreet';
+  room: string;
+}
+
+// assert orientation <room> away_from street
+export interface AssertionOrientationAwayFromStreet extends ASTNode {
+  type: 'AssertionOrientationAwayFromStreet';
+  room: string;
+}
+
+// assert orientation <room> garden_view (window facing back/away from street)
+export interface AssertionOrientationGardenView extends ASTNode {
+  type: 'AssertionOrientationGardenView';
+  room: string;
+}
+
+export type OrientationAssertion =
+  | AssertionOrientationHasWindow
+  | AssertionOrientationNearStreet
+  | AssertionOrientationAwayFromStreet
+  | AssertionOrientationGardenView;
+
 export type Assertion =
   | AssertionInsideFootprint
   | AssertionNoOverlap
   | AssertionOpeningsOnWalls
   | AssertionMinRoomArea
-  | AssertionRoomsConnected;
+  | AssertionRoomsConnected
+  | OrientationAssertion;
 
 // ============================================================================
 // Zones (Logical Grouping of Rooms)
@@ -397,5 +445,6 @@ export interface Program extends ASTNode {
   axis?: AxisDeclaration;
   grid?: GridDeclaration;
   defaults?: DefaultsDeclaration;
+  site?: SiteDeclaration;
   plan: PlanDefinition;
 }

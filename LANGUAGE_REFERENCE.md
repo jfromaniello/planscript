@@ -10,6 +10,7 @@ This document provides a complete specification of the PlanScript language for d
 - [Units](#units)
 - [Origin](#origin)
 - [Defaults](#defaults)
+- [Site](#site)
 - [Plan Block](#plan-block)
 - [Footprint](#footprint)
 - [Zones](#zones)
@@ -40,6 +41,7 @@ A PlanScript file (`.psc`) has the following structure. All top-level declaratio
 units <unit>              # Optional: set measurement units
 origin (<x>, <y>)         # Optional: set coordinate origin
 defaults { ... }          # Optional: default values for openings
+site { ... }              # Optional: site orientation (for solar/street context)
 
 plan "<name>" {           # Required: the floor plan definition
   footprint ...           # Required: building boundary
@@ -110,6 +112,51 @@ defaults {
   window_width 1.2
 }
 ```
+
+---
+
+## Site
+
+Defines the site orientation, enabling context-aware design validation. This allows you to specify which direction the street faces and validate that rooms have appropriate solar orientation or proximity to the street.
+
+### Basic Syntax
+
+```planscript
+site {
+  street <direction>      # Required: which direction the street/front faces
+  hemisphere <hemisphere> # Optional: north (default) or south
+}
+```
+
+**Directions:** `north`, `south`, `east`, `west`
+
+**Hemispheres:** `north` (default), `south`
+
+### Derived Information
+
+When you specify `street south`, the compiler automatically derives:
+
+| Concept | Meaning |
+|---------|---------|
+| `street` | South (where the entrance/front faces) |
+| `back` | North (opposite of street, typically garden/yard) |
+| `morning_sun` | East (sunrise direction) |
+| `afternoon_sun` | West (sunset direction) |
+
+### Example
+
+```planscript
+site {
+  street south       # Front of house faces south (toward the street)
+  hemisphere north   # Northern hemisphere (default)
+}
+```
+
+With this configuration, you can use orientation assertions to validate your design:
+- Bedrooms should have windows facing east (morning sun)
+- Living room should face west (afternoon sun) or north (garden view)
+- Garage should be near the street
+- Service areas can be toward the street (don't waste good orientations)
 
 ---
 
@@ -741,6 +788,81 @@ assert min_room_area <room_id> >= <value>
 assert min_room_area bedroom >= 12.0
 ```
 
+### Orientation Assertions
+
+Orientation assertions require a `site` declaration. They validate that rooms have appropriate solar orientation or proximity to the street.
+
+#### Has Window
+
+Ensures a room has a window facing a specific direction:
+
+```planscript
+assert orientation <room_id> has_window <target>
+```
+
+**Targets:**
+| Target | Description |
+|--------|-------------|
+| `north`, `south`, `east`, `west` | Cardinal direction |
+| `morning_sun` | East (for bedrooms - wake up with natural light) |
+| `afternoon_sun` | West (for living areas - evening light) |
+| `street` | Same as the street direction from site |
+
+**Examples:**
+```planscript
+assert orientation master has_window east         # Morning light
+assert orientation living has_window afternoon_sun # Evening light
+assert orientation bedroom has_window morning_sun  # Natural alarm clock
+```
+
+#### Near Street
+
+Ensures a room is located near the street side of the building:
+
+```planscript
+assert orientation <room_id> near street
+```
+
+Use for rooms that need street access (garage, entry) or don't need premium orientations (service areas).
+
+**Example:**
+```planscript
+assert orientation garage near street
+assert orientation entry near street
+```
+
+#### Away From Street
+
+Ensures a room is located at the back of the building (opposite the street):
+
+```planscript
+assert orientation <room_id> away_from street
+```
+
+Use for service areas that shouldn't waste street frontage.
+
+**Example:**
+```planscript
+assert orientation laundry away_from street
+assert orientation storage away_from street
+```
+
+#### Garden View
+
+Ensures a room has a window facing the back (opposite the street):
+
+```planscript
+assert orientation <room_id> garden_view
+```
+
+Use for living areas that should have views of the yard/garden.
+
+**Example:**
+```planscript
+assert orientation living garden_view
+assert orientation dining garden_view
+```
+
 ---
 
 ## Comments
@@ -962,13 +1084,15 @@ plan "Studio Apartment" {
 ### Keywords
 
 ```
-units, origin, defaults, plan, footprint, zone, room, courtyard, opening, assert,
+units, origin, defaults, site, plan, footprint, zone, room, courtyard, opening, assert,
 rect, polygon, at, size, attach, align, gap, span, from, to, label,
 door, window, between, and, on, shared_edge, width, height, sill,
 north_of, south_of, east_of, west_of,
 north, south, east, west,
 top, bottom, left, right, center,
 no_overlap, inside, all_rooms, min_room_area,
+orientation, has_window, near, away_from, garden_view,
+morning_sun, afternoon_sun, street, hemisphere,
 my, with, extend, fill, auto,
 m, cm, mm, ft, in
 ```
