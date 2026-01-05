@@ -426,4 +426,249 @@ describe('Lowering', () => {
       expect(lowered.openings).toHaveLength(1);
     });
   });
+
+  describe('Explicit Edge Alignment', () => {
+    it('should align room using explicit edge alignment', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room bedroom { rect (2,2) (8,6) }
+          room bathroom {
+            rect size (3, 2)
+            attach north_of bedroom
+            align my left with bedroom.left
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const bathroom = lowered.rooms.find((r) => r.name === 'bathroom')!;
+      // bedroom.left = 2, so bathroom.left should also be 2
+      const bathroomMinX = Math.min(...bathroom.polygon.map((p) => p.x));
+      expect(bathroomMinX).toBe(2);
+    });
+
+    it('should align right edge with right edge', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room bedroom { rect (2,2) (8,6) }
+          room bathroom {
+            rect size (3, 2)
+            attach north_of bedroom
+            align my right with bedroom.right
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const bathroom = lowered.rooms.find((r) => r.name === 'bathroom')!;
+      // bedroom.right = 8, so bathroom.right should also be 8
+      const bathroomMaxX = Math.max(...bathroom.polygon.map((p) => p.x));
+      expect(bathroomMaxX).toBe(8);
+    });
+
+    it('should align top edge with bottom edge', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room bedroom { rect (2,5) (8,10) }
+          room closet {
+            rect size (3, 2)
+            attach east_of bedroom
+            align my top with bedroom.bottom
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const closet = lowered.rooms.find((r) => r.name === 'closet')!;
+      // bedroom.bottom = 5, so closet.top should be 5 (meaning closet goes from y=3 to y=5)
+      const closetMaxY = Math.max(...closet.polygon.map((p) => p.y));
+      expect(closetMaxY).toBe(5);
+    });
+  });
+
+  describe('Auto Dimensions', () => {
+    it('should use target room height for auto height', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (9,7) }
+          room hallway {
+            rect size (1.5, auto)
+            attach east_of living
+            align top
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const hallway = lowered.rooms.find((r) => r.name === 'hallway')!;
+      // living is 6 units tall (y: 1 to 7)
+      const hallwayHeight = Math.max(...hallway.polygon.map((p) => p.y)) - Math.min(...hallway.polygon.map((p) => p.y));
+      expect(hallwayHeight).toBe(6);
+    });
+
+    it('should use target room width for auto width', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (9,7) }
+          room hallway {
+            rect size (auto, 2)
+            attach north_of living
+            align left
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const hallway = lowered.rooms.find((r) => r.name === 'hallway')!;
+      // living is 8 units wide (x: 1 to 9)
+      const hallwayWidth = Math.max(...hallway.polygon.map((p) => p.x)) - Math.min(...hallway.polygon.map((p) => p.x));
+      expect(hallwayWidth).toBe(8);
+    });
+  });
+
+  describe('Extend Directive', () => {
+    it('should use extend directive for auto height calculation', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (5,7) }
+          room master { rect (1,10) (5,15) }
+          room hallway {
+            rect size (1.5, auto)
+            attach east_of living
+            extend from living.top to master.bottom
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const hallway = lowered.rooms.find((r) => r.name === 'hallway')!;
+      // living.top = 7, master.bottom = 10, so height should be 3
+      const hallwayHeight = Math.max(...hallway.polygon.map((p) => p.y)) - Math.min(...hallway.polygon.map((p) => p.y));
+      expect(hallwayHeight).toBe(3);
+    });
+
+    it('should use extend directive for auto width calculation', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (5,7) }
+          room kitchen { rect (10,1) (15,7) }
+          room hallway {
+            rect size (auto, 2)
+            attach north_of living
+            extend from living.right to kitchen.left
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const hallway = lowered.rooms.find((r) => r.name === 'hallway')!;
+      // living.right = 5, kitchen.left = 10, so width should be 5
+      const hallwayWidth = Math.max(...hallway.polygon.map((p) => p.x)) - Math.min(...hallway.polygon.map((p) => p.x));
+      expect(hallwayWidth).toBe(5);
+    });
+  });
+
+  describe('Fill Between Rooms', () => {
+    it('should fill vertical gap between rooms', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (2,2) (8,6) }
+          room bedroom { rect (2,10) (8,14) }
+          room corridor {
+            fill between living and bedroom
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const corridor = lowered.rooms.find((r) => r.name === 'corridor')!;
+      // Gap is between y=6 and y=10, x spans from 2 to 8
+      expect(corridor.polygon).toContainEqual({ x: 2, y: 6 });
+      expect(corridor.polygon).toContainEqual({ x: 8, y: 6 });
+      expect(corridor.polygon).toContainEqual({ x: 8, y: 10 });
+      expect(corridor.polygon).toContainEqual({ x: 2, y: 10 });
+    });
+
+    it('should fill horizontal gap between rooms', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,2) (5,8) }
+          room bedroom { rect (10,2) (15,8) }
+          room corridor {
+            fill between living and bedroom
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const corridor = lowered.rooms.find((r) => r.name === 'corridor')!;
+      // Gap is between x=5 and x=10, y spans from 2 to 8
+      const minX = Math.min(...corridor.polygon.map((p) => p.x));
+      const maxX = Math.max(...corridor.polygon.map((p) => p.x));
+      const minY = Math.min(...corridor.polygon.map((p) => p.y));
+      const maxY = Math.max(...corridor.polygon.map((p) => p.y));
+      expect(minX).toBe(5);
+      expect(maxX).toBe(10);
+      expect(minY).toBe(2);
+      expect(maxY).toBe(8);
+    });
+
+    it('should apply explicit width to fill', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (2,2) (8,6) }
+          room bedroom { rect (2,10) (8,14) }
+          room corridor {
+            fill between living and bedroom
+            width 2
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const corridor = lowered.rooms.find((r) => r.name === 'corridor')!;
+      const corridorWidth = Math.max(...corridor.polygon.map((p) => p.x)) - Math.min(...corridor.polygon.map((p) => p.x));
+      expect(corridorWidth).toBe(2);
+    });
+
+    it('should apply explicit height to fill', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,2) (5,8) }
+          room bedroom { rect (10,2) (15,8) }
+          room corridor {
+            fill between living and bedroom
+            height 3
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const corridor = lowered.rooms.find((r) => r.name === 'corridor')!;
+      const corridorHeight = Math.max(...corridor.polygon.map((p) => p.y)) - Math.min(...corridor.polygon.map((p) => p.y));
+      expect(corridorHeight).toBe(3);
+    });
+  });
 });

@@ -9,9 +9,14 @@ import type {
   RoomRectCenterSize,
   RoomRectSizeOnly,
   RoomRectSpan,
+  RoomFill,
   FootprintRect,
   FootprintPolygon,
   Footprint,
+  AlignDirectiveSimple,
+  AlignDirectiveExplicit,
+  DimensionValue,
+  SizeValue,
 } from '../ast/types.js';
 
 // ============================================================================
@@ -137,6 +142,65 @@ function getRoomBounds(room: LoweredRoom): { minX: number; maxX: number; minY: n
   };
 }
 
+// Resolve 'auto' dimensions based on extend directive or target room
+function resolveSize(
+  sizeValue: SizeValue,
+  room: RoomDefinition,
+  targetBounds: { minX: number; maxX: number; minY: number; maxY: number },
+  resolvedRooms: Map<string, LoweredRoom>
+): Point {
+  let x: number;
+  let y: number;
+
+  // Resolve X dimension
+  if (sizeValue.x === 'auto') {
+    if (room.extend && room.extend.axis === 'x') {
+      // Use extend directive to calculate width
+      const fromRoom = resolvedRooms.get(room.extend.from.room);
+      const toRoom = resolvedRooms.get(room.extend.to.room);
+      if (!fromRoom || !toRoom) {
+        throw new LoweringError(
+          `Room "${room.name}" extend references unknown room`,
+          room.name
+        );
+      }
+      const fromValue = getRoomEdge(fromRoom, room.extend.from.edge);
+      const toValue = getRoomEdge(toRoom, room.extend.to.edge);
+      x = Math.abs(toValue - fromValue);
+    } else {
+      // Default: use target room's width
+      x = targetBounds.maxX - targetBounds.minX;
+    }
+  } else {
+    x = sizeValue.x;
+  }
+
+  // Resolve Y dimension
+  if (sizeValue.y === 'auto') {
+    if (room.extend && room.extend.axis === 'y') {
+      // Use extend directive to calculate height
+      const fromRoom = resolvedRooms.get(room.extend.from.room);
+      const toRoom = resolvedRooms.get(room.extend.to.room);
+      if (!fromRoom || !toRoom) {
+        throw new LoweringError(
+          `Room "${room.name}" extend references unknown room`,
+          room.name
+        );
+      }
+      const fromValue = getRoomEdge(fromRoom, room.extend.from.edge);
+      const toValue = getRoomEdge(toRoom, room.extend.to.edge);
+      y = Math.abs(toValue - fromValue);
+    } else {
+      // Default: use target room's height
+      y = targetBounds.maxY - targetBounds.minY;
+    }
+  } else {
+    y = sizeValue.y;
+  }
+
+  return { x, y };
+}
+
 function lowerRoomGeometry(
   room: RoomDefinition,
   resolvedRooms: Map<string, LoweredRoom>
@@ -174,9 +238,11 @@ function lowerRoomGeometry(
       }
 
       const targetBounds = getRoomBounds(targetRoom);
-      const size = geometry.size;
+      const sizeValue = geometry.size;
       const gap = room.gap?.distance ?? 0;
-      const alignment = room.align?.alignment ?? 'center';
+
+      // Resolve auto dimensions based on extend directive or target room
+      const resolvedSize = resolveSize(sizeValue, room, targetBounds, resolvedRooms);
 
       let x: number;
       let y: number;
@@ -187,48 +253,178 @@ function lowerRoomGeometry(
           x = targetBounds.maxX + gap;
           break;
         case 'west_of':
-          x = targetBounds.minX - size.x - gap;
+          x = targetBounds.minX - resolvedSize.x - gap;
           break;
         case 'north_of':
           y = targetBounds.maxY + gap;
           break;
         case 'south_of':
-          y = targetBounds.minY - size.y - gap;
+          y = targetBounds.minY - resolvedSize.y - gap;
           break;
       }
 
-      // Determine alignment
-      if (room.attach.direction === 'east_of' || room.attach.direction === 'west_of') {
-        switch (alignment) {
-          case 'top':
-            y = targetBounds.maxY - size.y;
-            break;
-          case 'bottom':
-            y = targetBounds.minY;
-            break;
-          case 'center':
-            y = (targetBounds.minY + targetBounds.maxY) / 2 - size.y / 2;
-            break;
-          default:
-            y = targetBounds.minY;
+      // Determine alignment - check for explicit or simple alignment
+      const align = room.align;
+      if (align && 'myEdge' in align) {
+        // Explicit alignment: align my left with bedroom.left
+        const explicitAlign = align as AlignDirectiveExplicit;
+        const withRoom = resolvedRooms.get(explicitAlign.withRoom);
+        if (!withRoom) {
+          throw new LoweringError(
+            `Room "${room.name}" aligns with unknown room "${explicitAlign.withRoom}"`,
+            room.name
+          );
         }
-      } else {
-        switch (alignment) {
+        const withValue = getRoomEdge(withRoom, explicitAlign.withEdge);
+        
+        // Calculate position based on which edge we're aligning
+        switch (explicitAlign.myEdge) {
           case 'left':
-            x = targetBounds.minX;
+            x = withValue;
             break;
           case 'right':
-            x = targetBounds.maxX - size.x;
+            x = withValue - resolvedSize.x;
             break;
-          case 'center':
-            x = (targetBounds.minX + targetBounds.maxX) / 2 - size.x / 2;
+          case 'top':
+            y = withValue - resolvedSize.y;
             break;
-          default:
-            x = targetBounds.minX;
+          case 'bottom':
+            y = withValue;
+            break;
+        }
+      } else {
+        // Simple alignment
+        const simpleAlign = align as AlignDirectiveSimple | undefined;
+        const alignment = simpleAlign?.alignment ?? 'center';
+        
+        if (room.attach.direction === 'east_of' || room.attach.direction === 'west_of') {
+          switch (alignment) {
+            case 'top':
+              y = targetBounds.maxY - resolvedSize.y;
+              break;
+            case 'bottom':
+              y = targetBounds.minY;
+              break;
+            case 'center':
+              y = (targetBounds.minY + targetBounds.maxY) / 2 - resolvedSize.y / 2;
+              break;
+            default:
+              y = targetBounds.minY;
+          }
+        } else {
+          switch (alignment) {
+            case 'left':
+              x = targetBounds.minX;
+              break;
+            case 'right':
+              x = targetBounds.maxX - resolvedSize.x;
+              break;
+            case 'center':
+              x = (targetBounds.minX + targetBounds.maxX) / 2 - resolvedSize.x / 2;
+              break;
+            default:
+              x = targetBounds.minX;
+          }
         }
       }
 
-      return rectAtSizeToPolygon({ x: x!, y: y! }, size);
+      return rectAtSizeToPolygon({ x: x!, y: y! }, resolvedSize);
+    }
+
+    case 'RoomFill': {
+      // Fill between two rooms
+      const [room1Name, room2Name] = geometry.between;
+      const room1 = resolvedRooms.get(room1Name);
+      const room2 = resolvedRooms.get(room2Name);
+
+      if (!room1) {
+        throw new LoweringError(
+          `Room "${room.name}" references unknown room "${room1Name}"`,
+          room.name
+        );
+      }
+      if (!room2) {
+        throw new LoweringError(
+          `Room "${room.name}" references unknown room "${room2Name}"`,
+          room.name
+        );
+      }
+
+      const bounds1 = getRoomBounds(room1);
+      const bounds2 = getRoomBounds(room2);
+
+      // Determine fill direction based on room positions
+      // If rooms are separated horizontally, fill horizontally
+      // If rooms are separated vertically, fill vertically
+      const horizontalGap = Math.max(bounds1.minX, bounds2.minX) - Math.min(bounds1.maxX, bounds2.maxX);
+      const verticalGap = Math.max(bounds1.minY, bounds2.minY) - Math.min(bounds1.maxY, bounds2.maxY);
+
+      let minX: number, maxX: number, minY: number, maxY: number;
+
+      if (horizontalGap > 0) {
+        // Rooms are separated horizontally - fill the gap
+        minX = Math.min(bounds1.maxX, bounds2.maxX);
+        maxX = Math.max(bounds1.minX, bounds2.minX);
+        
+        // Use explicit width if provided, or calculate from gap
+        if (geometry.width !== undefined) {
+          const centerX = (minX + maxX) / 2;
+          minX = centerX - geometry.width / 2;
+          maxX = centerX + geometry.width / 2;
+        }
+        
+        // Y spans from the max of the bottom edges to the min of the top edges
+        minY = Math.max(bounds1.minY, bounds2.minY);
+        maxY = Math.min(bounds1.maxY, bounds2.maxY);
+        
+        // Use explicit height if provided
+        if (geometry.height !== undefined) {
+          const centerY = (minY + maxY) / 2;
+          minY = centerY - geometry.height / 2;
+          maxY = centerY + geometry.height / 2;
+        }
+      } else if (verticalGap > 0) {
+        // Rooms are separated vertically - fill the gap
+        minY = Math.min(bounds1.maxY, bounds2.maxY);
+        maxY = Math.max(bounds1.minY, bounds2.minY);
+        
+        // Use explicit height if provided
+        if (geometry.height !== undefined) {
+          const centerY = (minY + maxY) / 2;
+          minY = centerY - geometry.height / 2;
+          maxY = centerY + geometry.height / 2;
+        }
+        
+        // X spans from the max of the left edges to the min of the right edges
+        minX = Math.max(bounds1.minX, bounds2.minX);
+        maxX = Math.min(bounds1.maxX, bounds2.maxX);
+        
+        // Use explicit width if provided
+        if (geometry.width !== undefined) {
+          const centerX = (minX + maxX) / 2;
+          minX = centerX - geometry.width / 2;
+          maxX = centerX + geometry.width / 2;
+        }
+      } else {
+        // Rooms overlap or touch - use the bounding box of both
+        minX = Math.min(bounds1.minX, bounds2.minX);
+        maxX = Math.max(bounds1.maxX, bounds2.maxX);
+        minY = Math.min(bounds1.minY, bounds2.minY);
+        maxY = Math.max(bounds1.maxY, bounds2.maxY);
+        
+        if (geometry.width !== undefined) {
+          const centerX = (minX + maxX) / 2;
+          minX = centerX - geometry.width / 2;
+          maxX = centerX + geometry.width / 2;
+        }
+        if (geometry.height !== undefined) {
+          const centerY = (minY + maxY) / 2;
+          minY = centerY - geometry.height / 2;
+          maxY = centerY + geometry.height / 2;
+        }
+      }
+
+      return rectDiagonalToPolygon({ x: minX, y: minY }, { x: maxX, y: maxY });
     }
 
     case 'RoomRectSpan': {

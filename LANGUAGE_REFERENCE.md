@@ -225,7 +225,7 @@ room <id> {
 | `east_of` | To the right of the reference room |
 | `west_of` | To the left of the reference room |
 
-**Alignments:**
+**Alignments (Simple):**
 | Alignment | Description |
 |-----------|-------------|
 | `top` | Align top edges (for east_of/west_of) |
@@ -234,6 +234,16 @@ room <id> {
 | `right` | Align right edges (for north_of/south_of) |
 | `center` | Center alignment |
 
+**Explicit Alignment:**
+
+For more precise control, use explicit edge alignment:
+
+```planscript
+align my <edge> with <room>.<edge>
+```
+
+This allows aligning any edge of the new room with any edge of another room.
+
 **Example:**
 ```planscript
 room kitchen {
@@ -241,6 +251,65 @@ room kitchen {
   attach east_of living
   align top
   gap 0
+}
+```
+
+**Example with explicit alignment:**
+```planscript
+room bathroom {
+  rect size (3, 2.5)
+  attach north_of bedroom
+  align my left with bedroom.left   # Align left edges precisely
+}
+```
+
+### Auto Dimensions
+
+Use `auto` for width or height to calculate dimensions automatically:
+
+```planscript
+room <id> {
+  rect size (<width>, auto)   # Auto-calculate height
+  attach <direction> <room_ref>
+  extend from <room>.<edge> to <room>.<edge>  # Defines the auto dimension range
+}
+```
+
+When `auto` is used:
+- Without `extend`: Uses the target room's corresponding dimension
+- With `extend`: Calculates the dimension from the specified edge range
+
+**Example:**
+```planscript
+room hallway {
+  rect size (1.5, auto)           # Width is 1.5, height calculated from extend
+  attach east_of living
+  extend from living.top to master.bottom  # Height spans from living.top to master.bottom
+}
+```
+
+### Fill Between Rooms
+
+Automatically fills the gap between two rooms:
+
+```planscript
+room <id> {
+  fill between <room1> and <room2>
+  width <value>    # Optional: explicit width
+  height <value>   # Optional: explicit height
+}
+```
+
+The fill geometry automatically:
+- Detects whether rooms are separated horizontally or vertically
+- Fills the gap between them
+- Spans the overlapping dimension
+
+**Example:**
+```planscript
+room corridor {
+  fill between living and bedrooms
+  width 1.2
 }
 ```
 
@@ -695,11 +764,12 @@ plan "Studio Apartment" {
 ```
 units, origin, defaults, plan, footprint, room, opening, assert,
 rect, polygon, at, size, attach, align, gap, span, from, to, label,
-door, window, between, and, on, shared_edge, width, sill,
+door, window, between, and, on, shared_edge, width, height, sill,
 north_of, south_of, east_of, west_of,
 north, south, east, west,
 top, bottom, left, right, center,
 no_overlap, inside, all_rooms, min_room_area,
+my, with, extend, fill, auto,
 m, cm, mm, ft, in
 ```
 
@@ -737,6 +807,7 @@ Both syntaxes are equivalent. Bracketed syntax allows trailing commas.
 10        # Integer
 10.5      # Decimal
 50%       # Percentage (for positions)
+auto      # Auto-calculated dimension (for size)
 ```
 
 ### Identifiers

@@ -965,4 +965,235 @@ describe('Parser', () => {
       expect(result.plan.assertions).toHaveLength(2);
     });
   });
+
+  describe('Explicit Edge Alignment', () => {
+    it('should parse align my <edge> with <room>.<edge>', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room bedroom { rect (1,1) (5,5) }
+          room bathroom {
+            rect size (3, 2.5)
+            attach north_of bedroom
+            align my left with bedroom.left
+          }
+        }
+      `;
+      const result = parse(source);
+      const bathroom = result.plan.rooms[1];
+      expect(bathroom.align).toBeDefined();
+      if (bathroom.align && 'myEdge' in bathroom.align) {
+        expect(bathroom.align.myEdge).toBe('left');
+        expect(bathroom.align.withRoom).toBe('bedroom');
+        expect(bathroom.align.withEdge).toBe('left');
+      }
+    });
+
+    it('should parse all edge combinations in explicit alignment', () => {
+      const edges = ['top', 'bottom', 'left', 'right'];
+      for (const myEdge of edges) {
+        for (const withEdge of edges) {
+          const source = `
+            plan {
+              footprint rect (0,0) (20,20)
+              room a { rect (5,5) (10,10) }
+              room b {
+                rect size (2,2)
+                attach east_of a
+                align my ${myEdge} with a.${withEdge}
+              }
+            }
+          `;
+          const result = parse(source);
+          const room = result.plan.rooms[1];
+          if (room.align && 'myEdge' in room.align) {
+            expect(room.align.myEdge).toBe(myEdge);
+            expect(room.align.withEdge).toBe(withEdge);
+          }
+        }
+      }
+    });
+  });
+
+  describe('Auto Dimensions', () => {
+    it('should parse rect size with auto width', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (9,7) }
+          room hallway {
+            rect size (auto, 2)
+            attach north_of living
+          }
+        }
+      `;
+      const result = parse(source);
+      const hallway = result.plan.rooms[1];
+      expect(hallway.geometry.type).toBe('RoomRectSizeOnly');
+      if (hallway.geometry.type === 'RoomRectSizeOnly') {
+        expect(hallway.geometry.size.x).toBe('auto');
+        expect(hallway.geometry.size.y).toBe(2);
+      }
+    });
+
+    it('should parse rect size with auto height', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (9,7) }
+          room hallway {
+            rect size (1.5, auto)
+            attach east_of living
+          }
+        }
+      `;
+      const result = parse(source);
+      const hallway = result.plan.rooms[1];
+      expect(hallway.geometry.type).toBe('RoomRectSizeOnly');
+      if (hallway.geometry.type === 'RoomRectSizeOnly') {
+        expect(hallway.geometry.size.x).toBe(1.5);
+        expect(hallway.geometry.size.y).toBe('auto');
+      }
+    });
+
+    it('should parse rect size with both auto dimensions', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (9,7) }
+          room hallway {
+            rect size (auto, auto)
+            attach east_of living
+          }
+        }
+      `;
+      const result = parse(source);
+      const hallway = result.plan.rooms[1];
+      if (hallway.geometry.type === 'RoomRectSizeOnly') {
+        expect(hallway.geometry.size.x).toBe('auto');
+        expect(hallway.geometry.size.y).toBe('auto');
+      }
+    });
+  });
+
+  describe('Extend Directive', () => {
+    it('should parse extend from <room>.<edge> to <room>.<edge>', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (9,7) }
+          room master { rect (1,10) (5,15) }
+          room hallway {
+            rect size (1.5, auto)
+            attach east_of living
+            extend from living.top to master.bottom
+          }
+        }
+      `;
+      const result = parse(source);
+      const hallway = result.plan.rooms[2];
+      expect(hallway.extend).toBeDefined();
+      expect(hallway.extend?.from).toEqual({ room: 'living', edge: 'top' });
+      expect(hallway.extend?.to).toEqual({ room: 'master', edge: 'bottom' });
+      expect(hallway.extend?.axis).toBe('y');
+    });
+
+    it('should infer x axis from left/right edges', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (9,7) }
+          room kitchen { rect (12,1) (18,7) }
+          room hallway {
+            rect size (auto, 2)
+            attach north_of living
+            extend from living.right to kitchen.left
+          }
+        }
+      `;
+      const result = parse(source);
+      const hallway = result.plan.rooms[2];
+      expect(hallway.extend?.axis).toBe('x');
+    });
+  });
+
+  describe('Fill Between Rooms', () => {
+    it('should parse fill between <room1> and <room2>', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (9,7) }
+          room bedroom { rect (1,10) (9,15) }
+          room corridor {
+            fill between living and bedroom
+          }
+        }
+      `;
+      const result = parse(source);
+      const corridor = result.plan.rooms[2];
+      expect(corridor.geometry.type).toBe('RoomFill');
+      if (corridor.geometry.type === 'RoomFill') {
+        expect(corridor.geometry.between).toEqual(['living', 'bedroom']);
+      }
+    });
+
+    it('should parse fill with explicit width', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (9,7) }
+          room bedroom { rect (1,10) (9,15) }
+          room corridor {
+            fill between living and bedroom
+            width 1.2
+          }
+        }
+      `;
+      const result = parse(source);
+      const corridor = result.plan.rooms[2];
+      if (corridor.geometry.type === 'RoomFill') {
+        expect(corridor.geometry.width).toBe(1.2);
+      }
+    });
+
+    it('should parse fill with explicit height', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (9,7) }
+          room bedroom { rect (12,1) (18,7) }
+          room corridor {
+            fill between living and bedroom
+            height 4
+          }
+        }
+      `;
+      const result = parse(source);
+      const corridor = result.plan.rooms[2];
+      if (corridor.geometry.type === 'RoomFill') {
+        expect(corridor.geometry.height).toBe(4);
+      }
+    });
+
+    it('should parse fill with both width and height', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (20,20)
+          room living { rect (1,1) (9,7) }
+          room bedroom { rect (12,10) (18,15) }
+          room corridor {
+            fill between living and bedroom
+            width 1.5
+            height 3
+          }
+        }
+      `;
+      const result = parse(source);
+      const corridor = result.plan.rooms[2];
+      if (corridor.geometry.type === 'RoomFill') {
+        expect(corridor.geometry.width).toBe(1.5);
+        expect(corridor.geometry.height).toBe(3);
+      }
+    });
+  });
 });

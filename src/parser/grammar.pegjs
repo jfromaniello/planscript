@@ -175,6 +175,9 @@ RoomDefinition
         span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } }
       };
       
+      let width: number | undefined;
+      let height: number | undefined;
+      
       for (const [, item] of content) {
         if (item.type === 'label') {
           result.label = item.value;
@@ -184,9 +187,21 @@ RoomDefinition
           result.align = item;
         } else if (item.type === 'GapDirective') {
           result.gap = item;
+        } else if (item.type === 'ExtendDirective') {
+          result.extend = item;
+        } else if (item.type === 'WidthDirective') {
+          width = item.value;
+        } else if (item.type === 'HeightDirective') {
+          height = item.value;
         } else {
           result.geometry = item;
         }
+      }
+      
+      // Apply width/height to RoomFill geometry if present
+      if (result.geometry && result.geometry.type === 'RoomFill') {
+        if (width !== undefined) result.geometry.width = width;
+        if (height !== undefined) result.geometry.height = height;
       }
       
       return result;
@@ -198,6 +213,9 @@ RoomContent
   / AttachDirective
   / AlignDirective
   / GapDirective
+  / ExtendDirective
+  / WidthDirective
+  / HeightDirective
 
 RoomLabel
   = "label"i _ value:String {
@@ -215,6 +233,7 @@ RoomGeometry
   / RoomRectCenterSize
   / RoomRectSizeOnly
   / RoomRectDiagonal
+  / RoomFill
 
 RoomPolygon
   = "polygon"i _ points:PointList {
@@ -241,9 +260,30 @@ RoomRectCenterSize
     }
 
 RoomRectSizeOnly
-  = "rect"i _ "size"i _ size:Point {
+  = "rect"i _ "size"i _ size:SizeValue {
       const loc = location();
       return { type: 'RoomRectSizeOnly', size, span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.RoomRectSizeOnly;
+    }
+
+// Size value can include 'auto' for automatic dimension calculation
+SizeValue
+  = "(" _ x:DimensionValue _ "," _ y:DimensionValue _ ")" {
+      return { x, y } as AST.SizeValue;
+    }
+
+DimensionValue
+  = "auto"i { return 'auto' as const; }
+  / value:Number { return value; }
+
+// Fill geometry: fill between room1 and room2
+RoomFill
+  = "fill"i _ "between"i _ room1:Identifier _ "and"i _ room2:Identifier {
+      const loc = location();
+      return { 
+        type: 'RoomFill', 
+        between: [room1, room2] as [string, string],
+        span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } }
+      } as AST.RoomFill;
     }
 
 RoomRectSpan
@@ -285,9 +325,27 @@ RelativeDirection
   / "west_of"i { return 'west_of' as AST.RelativeDirection; }
 
 AlignDirective
+  = AlignDirectiveExplicit
+  / AlignDirectiveSimple
+
+// Explicit edge alignment: align my left with bedroom.left
+AlignDirectiveExplicit
+  = "align"i _ "my"i _ myEdge:AlignEdge _ "with"i _ withRoom:Identifier "." withEdge:AlignEdge {
+      const loc = location();
+      return { 
+        type: 'AlignDirective', 
+        myEdge, 
+        withRoom, 
+        withEdge, 
+        span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } }
+      } as AST.AlignDirectiveExplicit;
+    }
+
+// Simple alignment: align top/bottom/left/right/center
+AlignDirectiveSimple
   = "align"i _ alignment:AlignmentType {
       const loc = location();
-      return { type: 'AlignDirective', alignment, span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.AlignDirective;
+      return { type: 'AlignDirective', alignment, span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.AlignDirectiveSimple;
     }
 
 AlignmentType
@@ -297,10 +355,44 @@ AlignmentType
   / "right"i { return 'right' as AST.AlignmentType; }
   / "center"i { return 'center' as AST.AlignmentType; }
 
+AlignEdge
+  = "top"i { return 'top' as AST.AlignEdge; }
+  / "bottom"i { return 'bottom' as AST.AlignEdge; }
+  / "left"i { return 'left' as AST.AlignEdge; }
+  / "right"i { return 'right' as AST.AlignEdge; }
+
 GapDirective
   = "gap"i _ distance:Number {
       const loc = location();
       return { type: 'GapDirective', distance, span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.GapDirective;
+    }
+
+// Extend directive: extend from living.top to master.bottom
+ExtendDirective
+  = "extend"i _ "from"i _ from:EdgeReference _ "to"i _ to:EdgeReference {
+      const loc = location();
+      // Determine axis from the edges referenced
+      const fromIsVertical = from.edge === 'top' || from.edge === 'bottom';
+      const axis = fromIsVertical ? 'y' : 'x';
+      return { 
+        type: 'ExtendDirective', 
+        axis,
+        from, 
+        to, 
+        span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } }
+      } as AST.ExtendDirective;
+    }
+
+// Width directive for fill geometry
+WidthDirective
+  = "width"i _ value:Number {
+      return { type: 'WidthDirective', value };
+    }
+
+// Height directive for fill geometry  
+HeightDirective
+  = "height"i _ value:Number {
+      return { type: 'HeightDirective', value };
     }
 
 // ============================================================================

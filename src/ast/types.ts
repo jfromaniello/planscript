@@ -108,7 +108,23 @@ export interface RoomRectCenterSize extends ASTNode {
 
 export interface RoomRectSizeOnly extends ASTNode {
   type: 'RoomRectSizeOnly';
-  size: Point;
+  size: SizeValue;
+}
+
+// Size can be a number or 'auto' for automatic calculation
+export type DimensionValue = number | 'auto';
+
+export interface SizeValue {
+  x: DimensionValue;
+  y: DimensionValue;
+}
+
+// Fill geometry: fill between room1 and room2
+export interface RoomFill extends ASTNode {
+  type: 'RoomFill';
+  between: [string, string]; // room names
+  width?: number;  // explicit width (for vertical fill)
+  height?: number; // explicit height (for horizontal fill)
 }
 
 export type RoomGeometry =
@@ -116,7 +132,8 @@ export type RoomGeometry =
   | RoomRectDiagonal
   | RoomRectAtSize
   | RoomRectCenterSize
-  | RoomRectSizeOnly;
+  | RoomRectSizeOnly
+  | RoomFill;
 
 // ============================================================================
 // Relative Placement
@@ -124,6 +141,7 @@ export type RoomGeometry =
 
 export type RelativeDirection = 'north_of' | 'south_of' | 'east_of' | 'west_of';
 export type AlignmentType = 'top' | 'bottom' | 'left' | 'right' | 'center';
+export type AlignEdge = 'top' | 'bottom' | 'left' | 'right';
 
 export interface AttachDirective extends ASTNode {
   type: 'AttachDirective';
@@ -131,14 +149,33 @@ export interface AttachDirective extends ASTNode {
   target: string; // room name
 }
 
-export interface AlignDirective extends ASTNode {
+// Simple alignment: align top/bottom/left/right/center
+export interface AlignDirectiveSimple extends ASTNode {
   type: 'AlignDirective';
   alignment: AlignmentType;
 }
 
+// Explicit edge alignment: align my left with bedroom.left
+export interface AlignDirectiveExplicit extends ASTNode {
+  type: 'AlignDirective';
+  myEdge: AlignEdge;
+  withRoom: string;
+  withEdge: AlignEdge;
+}
+
+export type AlignDirective = AlignDirectiveSimple | AlignDirectiveExplicit;
+
 export interface GapDirective extends ASTNode {
   type: 'GapDirective';
   distance: number;
+}
+
+// Extend directive: extend from living.top to master.bottom
+export interface ExtendDirective extends ASTNode {
+  type: 'ExtendDirective';
+  axis: 'x' | 'y';
+  from: EdgeReference;
+  to: EdgeReference;
 }
 
 // ============================================================================
@@ -180,6 +217,7 @@ export interface RoomDefinition extends ASTNode {
   attach?: AttachDirective;
   align?: AlignDirective;
   gap?: GapDirective;
+  extend?: ExtendDirective;
 }
 
 // ============================================================================
