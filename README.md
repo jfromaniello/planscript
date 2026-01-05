@@ -98,17 +98,17 @@ const source = `
   }
   plan "My House" {
     footprint rect (0,0) (15,12)
-    
+
     room living {
       rect (1,1) (8,6)
       label "Living Room"
     }
-    
+
     room kitchen {
       rect (8,1) (14,6)
       label "Kitchen"
     }
-    
+
     opening door d1 {
       between living and kitchen
       on shared_edge
@@ -130,13 +130,13 @@ if (result.success) {
 ### Step-by-Step Pipeline
 
 ```typescript
-import { 
-  parse, 
-  lower, 
-  generateGeometry, 
-  validate, 
-  exportSVG, 
-  exportJSON 
+import {
+  parse,
+  lower,
+  generateGeometry,
+  validate,
+  exportSVG,
+  exportJSON
 } from 'planscript';
 
 // 1. Parse source to AST
@@ -176,7 +176,7 @@ const svg = exportSVG(geometry, {
 });
 
 // JSON options
-const json = exportJSON(geometry, { 
+const json = exportJSON(geometry, {
   pretty: true  // Pretty-print JSON (default: false)
 }, ast);
 ```
@@ -195,7 +195,7 @@ defaults {
 
 plan "House Name" {
   footprint rect (0,0) (20,15)
-  
+
   # rooms...
   # openings...
   # assertions...
@@ -283,7 +283,7 @@ The PlanScript VS Code extension provides:
 **From GitHub:**
 ```bash
 # Clone the extension repo
-git clone https://github.com/TODO_YOUR_USERNAME/vscode-planscript
+git clone https://github.com/jfromaniello/vscode-planscript
 cd vscode-planscript
 
 # Install and build
