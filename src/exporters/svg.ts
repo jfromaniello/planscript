@@ -143,6 +143,158 @@ function calculatePolygonCenter(points: Point[]): Point {
   return { x, y };
 }
 
+/**
+ * Test if a point is inside a polygon using ray casting algorithm.
+ */
+function isPointInPolygon(point: Point, polygon: Point[]): boolean {
+  const { x, y } = point;
+  let inside = false;
+  
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y;
+    const xj = polygon[j].x, yj = polygon[j].y;
+    
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  
+  return inside;
+}
+
+/**
+ * Calculate the distance from a point to a line segment.
+ */
+function pointToSegmentDistance(point: Point, p1: Point, p2: Point): number {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const lengthSquared = dx * dx + dy * dy;
+  
+  if (lengthSquared === 0) {
+    // Segment is a point
+    return Math.sqrt((point.x - p1.x) ** 2 + (point.y - p1.y) ** 2);
+  }
+  
+  // Project point onto line, clamped to segment
+  let t = ((point.x - p1.x) * dx + (point.y - p1.y) * dy) / lengthSquared;
+  t = Math.max(0, Math.min(1, t));
+  
+  const projX = p1.x + t * dx;
+  const projY = p1.y + t * dy;
+  
+  return Math.sqrt((point.x - projX) ** 2 + (point.y - projY) ** 2);
+}
+
+/**
+ * Calculate minimum distance from a point to the polygon boundary.
+ */
+function pointToPolygonDistance(point: Point, polygon: Point[]): number {
+  let minDist = Infinity;
+  
+  for (let i = 0; i < polygon.length; i++) {
+    const p1 = polygon[i];
+    const p2 = polygon[(i + 1) % polygon.length];
+    const dist = pointToSegmentDistance(point, p1, p2);
+    minDist = Math.min(minDist, dist);
+  }
+  
+  return minDist;
+}
+
+/**
+ * Find the visual center of a polygon using a "pole of inaccessibility" algorithm.
+ * This finds the point inside the polygon that is furthest from any edge.
+ * Uses an iterative grid-based approach for better accuracy.
+ */
+function findVisualCenter(points: Point[]): Point {
+  // Calculate bounding box
+  const xs = points.map(p => p.x);
+  const ys = points.map(p => p.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  
+  const width = maxX - minX;
+  const height = maxY - minY;
+  
+  // Start with centroid as fallback
+  const centroid = calculatePolygonCenter(points);
+  
+  // If centroid is inside, use iterative refinement
+  // Otherwise, find a point inside first
+  let bestPoint = centroid;
+  let bestDistance = isPointInPolygon(centroid, points) 
+    ? pointToPolygonDistance(centroid, points) 
+    : -Infinity;
+  
+  // Initial grid search
+  const gridSize = 10;
+  const cellWidth = width / gridSize;
+  const cellHeight = height / gridSize;
+  
+  for (let i = 0; i <= gridSize; i++) {
+    for (let j = 0; j <= gridSize; j++) {
+      const testPoint = {
+        x: minX + i * cellWidth,
+        y: minY + j * cellHeight
+      };
+      
+      if (isPointInPolygon(testPoint, points)) {
+        const dist = pointToPolygonDistance(testPoint, points);
+        if (dist > bestDistance) {
+          bestDistance = dist;
+          bestPoint = testPoint;
+        }
+      }
+    }
+  }
+  
+  // Refinement: search around best point with smaller grid
+  const refineRadius = Math.max(cellWidth, cellHeight);
+  const refineSteps = 5;
+  
+  for (let iteration = 0; iteration < 3; iteration++) {
+    const searchRadius = refineRadius / Math.pow(2, iteration);
+    const step = searchRadius / refineSteps;
+    
+    for (let dx = -refineSteps; dx <= refineSteps; dx++) {
+      for (let dy = -refineSteps; dy <= refineSteps; dy++) {
+        const testPoint = {
+          x: bestPoint.x + dx * step,
+          y: bestPoint.y + dy * step
+        };
+        
+        if (isPointInPolygon(testPoint, points)) {
+          const dist = pointToPolygonDistance(testPoint, points);
+          if (dist > bestDistance) {
+            bestDistance = dist;
+            bestPoint = testPoint;
+          }
+        }
+      }
+    }
+  }
+  
+  return bestPoint;
+}
+
+/**
+ * Get the best label position for a polygon.
+ * Uses centroid for convex polygons, visual center for concave ones.
+ */
+function getLabelPosition(points: Point[]): Point {
+  const centroid = calculatePolygonCenter(points);
+  
+  // If centroid is inside the polygon, it's good enough for most cases
+  if (isPointInPolygon(centroid, points)) {
+    return centroid;
+  }
+  
+  // For concave polygons where centroid is outside, find the visual center
+  return findVisualCenter(points);
+}
+
 function calculatePolygonBounds(points: Point[]): { width: number; height: number } {
   const xs = points.map(p => p.x);
   const ys = points.map(p => p.y);
@@ -186,7 +338,7 @@ function generateLabelsSVG(rooms: ResolvedRoom[], t: Transform, opts: Required<S
   for (const room of rooms) {
     if (!room.label) continue;
     
-    const worldCenter = calculatePolygonCenter(room.polygon.points);
+    const worldCenter = getLabelPosition(room.polygon.points);
     const screenCenter = transformPoint(worldCenter, t);
     
     // Calculate room size in screen coordinates to adapt font size

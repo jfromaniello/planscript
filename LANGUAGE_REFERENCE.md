@@ -710,6 +710,27 @@ m, cm, mm, ft, in
 (<x1>, <y1>) (<x2>, <y2>)   # Two corners
 ```
 
+### Point List Syntax
+
+Polygons support two syntaxes:
+
+**Bracketed (recommended for multiline):**
+```planscript
+polygon [
+  (0, 0),
+  (10, 0),
+  (10, 10),
+  (0, 10)
+]
+```
+
+**Space-separated (compact):**
+```planscript
+polygon (0, 0) (10, 0) (10, 10) (0, 10)
+```
+
+Both syntaxes are equivalent. Bracketed syntax allows trailing commas.
+
 ### Numeric Values
 
 ```

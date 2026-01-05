@@ -245,6 +245,59 @@ describe('Parser', () => {
         expect(result.plan.footprint.points).toHaveLength(6);
       }
     });
+
+    it('should parse footprint polygon with bracketed syntax', () => {
+      const source = `
+        plan {
+          footprint polygon [
+            (0, 0),
+            (20, 0),
+            (20, 30),
+            (0, 30)
+          ]
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.footprint.type).toBe('FootprintPolygon');
+      if (result.plan.footprint.type === 'FootprintPolygon') {
+        expect(result.plan.footprint.points).toHaveLength(4);
+        expect(result.plan.footprint.points[0]).toEqual({ x: 0, y: 0 });
+        expect(result.plan.footprint.points[1]).toEqual({ x: 20, y: 0 });
+        expect(result.plan.footprint.points[2]).toEqual({ x: 20, y: 30 });
+        expect(result.plan.footprint.points[3]).toEqual({ x: 0, y: 30 });
+      }
+    });
+
+    it('should parse footprint polygon with bracketed syntax and trailing comma', () => {
+      const source = `
+        plan {
+          footprint polygon [
+            (1, 1),
+            (19, 1),
+            (19, 26),
+            (1, 26),
+          ]
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.footprint.type).toBe('FootprintPolygon');
+      if (result.plan.footprint.type === 'FootprintPolygon') {
+        expect(result.plan.footprint.points).toHaveLength(4);
+      }
+    });
+
+    it('should parse footprint polygon with bracketed syntax on single line', () => {
+      const source = `
+        plan {
+          footprint polygon [(0, 0), (10, 0), (10, 10), (0, 10)]
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.footprint.type).toBe('FootprintPolygon');
+      if (result.plan.footprint.type === 'FootprintPolygon') {
+        expect(result.plan.footprint.points).toHaveLength(4);
+      }
+    });
   });
 
   describe('Room Definitions', () => {
@@ -276,6 +329,50 @@ describe('Parser', () => {
         `;
         const result = parse(source);
         expect(result.plan.rooms[0].label).toBe('Living Room');
+      });
+
+      it('should parse room polygon with bracketed syntax', () => {
+        const source = `
+          plan {
+            footprint rect (0,0) (20,20)
+            room hall {
+              polygon [
+                (10, 4),
+                (12, 4),
+                (12, 12),
+                (16, 12),
+                (16, 14),
+                (12, 14),
+                (12, 16),
+                (10, 16)
+              ]
+              label "Hall"
+            }
+          }
+        `;
+        const result = parse(source);
+        expect(result.plan.rooms[0].geometry.type).toBe('RoomPolygon');
+        if (result.plan.rooms[0].geometry.type === 'RoomPolygon') {
+          expect(result.plan.rooms[0].geometry.points).toHaveLength(8);
+          expect(result.plan.rooms[0].geometry.points[0]).toEqual({ x: 10, y: 4 });
+          expect(result.plan.rooms[0].geometry.points[7]).toEqual({ x: 10, y: 16 });
+        }
+      });
+
+      it('should parse room polygon with bracketed syntax on single line', () => {
+        const source = `
+          plan {
+            footprint rect (0,0) (20,20)
+            room living {
+              polygon [(1, 1), (9, 1), (9, 7), (1, 7)]
+            }
+          }
+        `;
+        const result = parse(source);
+        expect(result.plan.rooms[0].geometry.type).toBe('RoomPolygon');
+        if (result.plan.rooms[0].geometry.type === 'RoomPolygon') {
+          expect(result.plan.rooms[0].geometry.points).toHaveLength(4);
+        }
       });
     });
 

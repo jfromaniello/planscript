@@ -538,6 +538,17 @@ Point
     }
 
 PointList
+  = PointListBracketed
+  / PointListSpaced
+
+// Bracketed syntax: [ (1, 2), (3, 4), (5, 6) ]
+PointListBracketed
+  = "[" _ head:Point tail:(_ "," _ Point)* _ ","? _ "]" {
+      return [head, ...tail.map((t: [unknown, unknown, unknown, AST.Point]) => t[3])];
+    }
+
+// Original space-separated syntax: (1, 2) (3, 4) (5, 6)
+PointListSpaced
   = head:Point tail:(_ Point)* {
       return [head, ...tail.map((t: [unknown, AST.Point]) => t[1])];
     }
