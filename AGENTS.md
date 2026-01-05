@@ -214,6 +214,7 @@ node dist/cli.js examples/house.psc --svg output.svg --dimensions
 
 See `LANGUAGE_REFERENCE.md` for complete syntax documentation. Key constructs:
 
+- **Zones**: Logical groupings of rooms that can be positioned as a unit
 - **Rooms**: `rect`, `polygon`, `fill between`
 - **Positioning**: `attach`, `align`, `gap`, `extend`
 - **Openings**: `opening door`, `opening window`

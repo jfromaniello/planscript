@@ -17,6 +17,7 @@ import type {
   AlignDirectiveExplicit,
   DimensionValue,
   SizeValue,
+  ZoneDefinition,
 } from '../ast/types.js';
 
 // ============================================================================
@@ -27,6 +28,16 @@ export interface LoweredRoom {
   name: string;
   label?: string;
   polygon: Point[];
+  zone?: string;  // Name of the zone this room belongs to (if any)
+}
+
+// Zone bounding box for positioning calculations
+export interface ZoneBounds {
+  name: string;
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
 }
 
 export interface Defaults {
@@ -458,17 +469,167 @@ function lowerRoomGeometry(
 }
 
 // ============================================================================
+// Zone Lowering Functions
+// ============================================================================
+
+// Translate all points in a polygon by an offset
+function translatePolygon(polygon: Point[], offset: Point): Point[] {
+  return polygon.map(p => ({ x: p.x + offset.x, y: p.y + offset.y }));
+}
+
+// Calculate bounding box from a set of rooms
+function calculateZoneBounds(rooms: LoweredRoom[]): { minX: number; maxX: number; minY: number; maxY: number } {
+  if (rooms.length === 0) {
+    return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  }
+  
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  
+  for (const room of rooms) {
+    for (const p of room.polygon) {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
+    }
+  }
+  
+  return { minX, maxX, minY, maxY };
+}
+
+// Lower a zone: first lower its rooms in local coordinates, then calculate zone offset
+function lowerZone(
+  zone: ZoneDefinition,
+  resolvedRooms: Map<string, LoweredRoom>,
+  zoneBounds: Map<string, ZoneBounds>
+): LoweredRoom[] {
+  // First, lower all rooms within the zone using local coordinates
+  const localRooms = new Map<string, LoweredRoom>();
+  
+  for (const room of zone.rooms) {
+    const polygon = lowerRoomGeometry(room, localRooms);
+    const loweredRoom: LoweredRoom = {
+      name: room.name,
+      label: room.label,
+      polygon,
+      zone: zone.name,
+    };
+    localRooms.set(room.name, loweredRoom);
+  }
+  
+  // Calculate the zone's local bounding box (before translation)
+  const localBounds = calculateZoneBounds(Array.from(localRooms.values()));
+  const zoneWidth = localBounds.maxX - localBounds.minX;
+  const zoneHeight = localBounds.maxY - localBounds.minY;
+  
+  // Calculate zone offset based on attach directive
+  let offsetX = 0;
+  let offsetY = 0;
+  
+  if (zone.attach) {
+    // Check if target is a zone or a room
+    const targetZone = zoneBounds.get(zone.attach.target);
+    const targetRoom = resolvedRooms.get(zone.attach.target);
+    
+    let targetBounds: { minX: number; maxX: number; minY: number; maxY: number };
+    
+    if (targetZone) {
+      targetBounds = targetZone;
+    } else if (targetRoom) {
+      targetBounds = getRoomBounds(targetRoom);
+    } else {
+      throw new LoweringError(
+        `Zone "${zone.name}" attaches to unknown zone or room "${zone.attach.target}"`,
+        zone.name
+      );
+    }
+    
+    const gap = zone.gap?.distance ?? 0;
+    
+    // Calculate base position based on direction
+    switch (zone.attach.direction) {
+      case 'east_of':
+        offsetX = targetBounds.maxX + gap - localBounds.minX;
+        break;
+      case 'west_of':
+        offsetX = targetBounds.minX - gap - zoneWidth - localBounds.minX;
+        break;
+      case 'north_of':
+        offsetY = targetBounds.maxY + gap - localBounds.minY;
+        break;
+      case 'south_of':
+        offsetY = targetBounds.minY - gap - zoneHeight - localBounds.minY;
+        break;
+    }
+    
+    // Apply alignment
+    const align = zone.align;
+    if (align && 'alignment' in align) {
+      const alignment = (align as AlignDirectiveSimple).alignment;
+      
+      if (zone.attach.direction === 'east_of' || zone.attach.direction === 'west_of') {
+        switch (alignment) {
+          case 'top':
+            offsetY = targetBounds.maxY - zoneHeight - localBounds.minY;
+            break;
+          case 'bottom':
+            offsetY = targetBounds.minY - localBounds.minY;
+            break;
+          case 'center':
+            offsetY = (targetBounds.minY + targetBounds.maxY) / 2 - zoneHeight / 2 - localBounds.minY;
+            break;
+        }
+      } else {
+        switch (alignment) {
+          case 'left':
+            offsetX = targetBounds.minX - localBounds.minX;
+            break;
+          case 'right':
+            offsetX = targetBounds.maxX - zoneWidth - localBounds.minX;
+            break;
+          case 'center':
+            offsetX = (targetBounds.minX + targetBounds.maxX) / 2 - zoneWidth / 2 - localBounds.minX;
+            break;
+        }
+      }
+    }
+  }
+  
+  // Translate all rooms by the offset
+  const translatedRooms: LoweredRoom[] = [];
+  for (const room of localRooms.values()) {
+    const translatedRoom: LoweredRoom = {
+      name: room.name,
+      label: room.label,
+      polygon: translatePolygon(room.polygon, { x: offsetX, y: offsetY }),
+      zone: zone.name,
+    };
+    translatedRooms.push(translatedRoom);
+  }
+  
+  // Calculate and store the zone's global bounding box
+  const globalBounds = calculateZoneBounds(translatedRooms);
+  zoneBounds.set(zone.name, {
+    name: zone.name,
+    ...globalBounds,
+  });
+  
+  return translatedRooms;
+}
+
+// ============================================================================
 // Main Lowering Function
 // ============================================================================
 
 export function lower(program: Program): LoweredProgram {
   const plan = program.plan;
   const resolvedRooms = new Map<string, LoweredRoom>();
+  const zoneBounds = new Map<string, ZoneBounds>();
 
   // Lower footprint
   const footprint = lowerFootprint(plan.footprint);
 
-  // Lower rooms in order (dependencies must come first)
+  // First, lower standalone rooms (not in zones) - they may be referenced by zones
   for (const room of plan.rooms) {
     const polygon = lowerRoomGeometry(room, resolvedRooms);
     const loweredRoom: LoweredRoom = {
@@ -477,6 +638,16 @@ export function lower(program: Program): LoweredProgram {
       polygon,
     };
     resolvedRooms.set(room.name, loweredRoom);
+  }
+
+  // Then, lower zones in order (they can reference standalone rooms or previous zones)
+  for (const zone of plan.zones) {
+    const zoneRooms = lowerZone(zone, resolvedRooms, zoneBounds);
+    
+    // Add zone rooms to the resolved rooms map
+    for (const room of zoneRooms) {
+      resolvedRooms.set(room.name, room);
+    }
   }
 
   // Extract defaults

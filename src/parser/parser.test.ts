@@ -1196,4 +1196,108 @@ describe('Parser', () => {
       }
     });
   });
+
+  describe('Zone Definitions', () => {
+    it('should parse a basic zone with rooms', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (30,30)
+          
+          zone social {
+            room living { rect (0, 0) (6, 5) }
+            room dining { rect (6, 0) (10, 5) }
+          }
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.zones).toHaveLength(1);
+      expect(result.plan.zones[0].name).toBe('social');
+      expect(result.plan.zones[0].rooms).toHaveLength(2);
+      expect(result.plan.zones[0].rooms[0].name).toBe('living');
+      expect(result.plan.zones[0].rooms[1].name).toBe('dining');
+    });
+
+    it('should parse zone with label', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (30,30)
+          
+          zone private {
+            label "Private Wing"
+            room master { rect (0, 0) (5, 5) }
+          }
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.zones[0].label).toBe('Private Wing');
+    });
+
+    it('should parse zone with attach directive', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (30,30)
+          
+          room entry { rect (10, 0) (15, 5) }
+          
+          zone social {
+            attach north_of entry
+            align center
+            gap 0
+            room living { rect (0, 0) (8, 6) }
+          }
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.zones[0].attach?.direction).toBe('north_of');
+      expect(result.plan.zones[0].attach?.target).toBe('entry');
+      expect(result.plan.zones[0].align).toBeDefined();
+      expect(result.plan.zones[0].gap?.distance).toBe(0);
+    });
+
+    it('should parse multiple zones', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (30,30)
+          
+          zone social {
+            room living { rect (0, 0) (6, 5) }
+            room kitchen { rect (6, 0) (10, 5) }
+          }
+          
+          zone private {
+            attach north_of social
+            room master { rect (0, 0) (5, 4) }
+            room bedroom2 { rect (5, 0) (9, 4) }
+          }
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.zones).toHaveLength(2);
+      expect(result.plan.zones[0].name).toBe('social');
+      expect(result.plan.zones[1].name).toBe('private');
+      expect(result.plan.zones[1].attach?.target).toBe('social');
+    });
+
+    it('should parse zone with rooms using relative placement', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (30,30)
+          
+          zone social {
+            room living { rect (0, 0) (6, 5) }
+            room kitchen {
+              rect size (4, 5)
+              attach east_of living
+              align top
+              gap 0
+            }
+          }
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.zones[0].rooms).toHaveLength(2);
+      expect(result.plan.zones[0].rooms[1].attach?.direction).toBe('east_of');
+      expect(result.plan.zones[0].rooms[1].attach?.target).toBe('living');
+    });
+  });
 });

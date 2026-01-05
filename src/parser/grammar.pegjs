@@ -110,6 +110,7 @@ PlanDefinition
         type: 'PlanDefinition',
         name: name ?? 'unnamed',
         footprint: undefined as unknown as AST.Footprint,
+        zones: [],
         rooms: [],
         openings: [],
         wallOverrides: [],
@@ -120,6 +121,8 @@ PlanDefinition
       for (const [, item] of content) {
         if (item.type === 'FootprintPolygon' || item.type === 'FootprintRect') {
           result.footprint = item;
+        } else if (item.type === 'ZoneDefinition') {
+          result.zones.push(item);
         } else if (item.type === 'RoomDefinition') {
           result.rooms.push(item);
         } else if (item.type === 'DoorOpening' || item.type === 'WindowOpening') {
@@ -136,6 +139,7 @@ PlanDefinition
 
 PlanContent
   = Footprint
+  / ZoneDefinition
   / RoomDefinition
   / Opening
   / WallThicknessOverride
@@ -159,6 +163,49 @@ FootprintRect
   = "footprint"i _ "rect"i _ p1:Point _ p2:Point {
       const loc = location();
       return { type: 'FootprintRect', p1, p2, span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.FootprintRect;
+    }
+
+// ============================================================================
+// Zone Definition
+// ============================================================================
+
+ZoneDefinition
+  = "zone"i _ name:Identifier _ "{" _ content:(_ ZoneContent)* _ "}" {
+      const loc = location();
+      const result: AST.ZoneDefinition = {
+        type: 'ZoneDefinition',
+        name,
+        rooms: [],
+        span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } }
+      };
+      
+      for (const [, item] of content) {
+        if (item.type === 'label') {
+          result.label = item.value;
+        } else if (item.type === 'AttachDirective') {
+          result.attach = item;
+        } else if (item.type === 'AlignDirective') {
+          result.align = item;
+        } else if (item.type === 'GapDirective') {
+          result.gap = item;
+        } else if (item.type === 'RoomDefinition') {
+          result.rooms.push(item);
+        }
+      }
+      
+      return result;
+    }
+
+ZoneContent
+  = RoomDefinition
+  / ZoneLabel
+  / AttachDirective
+  / AlignDirective
+  / GapDirective
+
+ZoneLabel
+  = "label"i _ value:String {
+      return { type: 'label', value };
     }
 
 // ============================================================================

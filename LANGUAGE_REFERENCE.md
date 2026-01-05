@@ -12,6 +12,7 @@ This document provides a complete specification of the PlanScript language for d
 - [Defaults](#defaults)
 - [Plan Block](#plan-block)
 - [Footprint](#footprint)
+- [Zones](#zones)
 - [Rooms](#rooms)
   - [Rectangle with Two Corners](#rectangle-with-two-corners)
   - [Rectangle with Position and Size](#rectangle-with-position-and-size)
@@ -41,7 +42,8 @@ defaults { ... }          # Optional: default values for openings
 
 plan "<name>" {           # Required: the floor plan definition
   footprint ...           # Required: building boundary
-  room ... { ... }        # One or more rooms
+  zone ... { ... }        # Zero or more zones (grouped rooms)
+  room ... { ... }        # Zero or more standalone rooms
   opening ... { ... }     # Zero or more openings (doors/windows)
   assert ...              # Zero or more validation assertions
 }
@@ -166,6 +168,118 @@ footprint polygon [
   (12, 15),
   (0, 15)
 ]
+```
+
+---
+
+## Zones
+
+Zones are logical groupings of rooms that can be positioned as a unit. This allows you to think at a higher level - "place the social zone here, private zone there" - rather than calculating coordinates for each room individually.
+
+### Basic Zone Syntax
+
+```planscript
+zone <id> {
+  room <id> { ... }   # Rooms use local coordinates within the zone
+  room <id> { ... }
+}
+```
+
+Rooms inside a zone use **local coordinates** (relative to the zone's origin at 0,0). When the zone is positioned, all rooms are translated together.
+
+### Zone with Positioning
+
+Zones can attach to other zones or standalone rooms:
+
+```planscript
+zone <id> {
+  attach <direction> <zone_or_room>
+  align <alignment>
+  gap <distance>
+  
+  room <id> { ... }
+  room <id> { ... }
+}
+```
+
+**Directions:**
+| Direction | Description |
+|-----------|-------------|
+| `north_of` | Above the reference |
+| `south_of` | Below the reference |
+| `east_of` | To the right of the reference |
+| `west_of` | To the left of the reference |
+
+**Alignments:**
+| Alignment | Description |
+|-----------|-------------|
+| `top` | Align top edges |
+| `bottom` | Align bottom edges |
+| `left` | Align left edges |
+| `right` | Align right edges |
+| `center` | Center alignment |
+
+### Zone Example
+
+```planscript
+plan "House with Zones" {
+  footprint rect (0, 0) (25, 20)
+  
+  # Entry area (standalone room)
+  room entry { rect (10, 0) (15, 4) }
+  
+  # Social zone - living, dining, kitchen
+  zone social {
+    attach north_of entry
+    align center
+    gap 0
+    
+    room living { rect (0, 0) (8, 6) }
+    room dining {
+      rect size (4, 6)
+      attach east_of living
+      align top
+      gap 0
+    }
+    room kitchen {
+      rect size (4, 6)
+      attach east_of dining
+      align top
+      gap 0
+    }
+  }
+  
+  # Private zone - bedrooms
+  zone private {
+    attach north_of social
+    align left
+    gap 0
+    
+    room master { rect (0, 0) (6, 5) }
+    room bedroom2 {
+      rect size (5, 5)
+      attach east_of master
+      align bottom
+      gap 0
+    }
+  }
+}
+```
+
+In this example:
+1. The `entry` room is placed first at fixed coordinates
+2. The `social` zone attaches north of entry, containing living/dining/kitchen
+3. The `private` zone attaches north of social, containing bedrooms
+
+### Zone Labels
+
+Zones can have optional labels:
+
+```planscript
+zone private {
+  label "Private Wing"
+  room master { ... }
+}
 ```
 
 ---
@@ -762,7 +876,7 @@ plan "Studio Apartment" {
 ### Keywords
 
 ```
-units, origin, defaults, plan, footprint, room, opening, assert,
+units, origin, defaults, plan, footprint, zone, room, opening, assert,
 rect, polygon, at, size, attach, align, gap, span, from, to, label,
 door, window, between, and, on, shared_edge, width, height, sill,
 north_of, south_of, east_of, west_of,

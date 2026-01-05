@@ -671,4 +671,160 @@ describe('Lowering', () => {
       expect(corridorHeight).toBe(3);
     });
   });
+
+  describe('Zone Lowering', () => {
+    it('should lower a zone with rooms at origin', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (30,30)
+          
+          zone social {
+            room living { rect (0, 0) (6, 5) }
+            room kitchen { rect (6, 0) (10, 5) }
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      expect(lowered.rooms).toHaveLength(2);
+      
+      const living = lowered.rooms.find((r) => r.name === 'living')!;
+      const kitchen = lowered.rooms.find((r) => r.name === 'kitchen')!;
+      
+      expect(living.zone).toBe('social');
+      expect(kitchen.zone).toBe('social');
+      
+      // Without attach, zone starts at origin
+      expect(living.polygon).toContainEqual({ x: 0, y: 0 });
+      expect(kitchen.polygon).toContainEqual({ x: 6, y: 0 });
+    });
+
+    it('should position zone north of a standalone room', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (30,30)
+          
+          room entry { rect (5, 0) (10, 3) }
+          
+          zone social {
+            attach north_of entry
+            align left
+            gap 0
+            room living { rect (0, 0) (6, 5) }
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const entry = lowered.rooms.find((r) => r.name === 'entry')!;
+      const living = lowered.rooms.find((r) => r.name === 'living')!;
+      
+      // entry is at y=0 to y=3
+      // zone should be at y=3 (north of entry)
+      // with align left, zone's left edge should align with entry's left edge (x=5)
+      const livingMinY = Math.min(...living.polygon.map((p) => p.y));
+      const livingMinX = Math.min(...living.polygon.map((p) => p.x));
+      
+      expect(livingMinY).toBe(3);
+      expect(livingMinX).toBe(5);
+    });
+
+    it('should position zone east of another zone', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (30,30)
+          
+          zone social {
+            room living { rect (0, 0) (6, 5) }
+          }
+          
+          zone private {
+            attach east_of social
+            align bottom
+            gap 1
+            room master { rect (0, 0) (5, 4) }
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const living = lowered.rooms.find((r) => r.name === 'living')!;
+      const master = lowered.rooms.find((r) => r.name === 'master')!;
+      
+      // living is at x=0 to x=6
+      // private zone should be at x=7 (east of social + gap 1)
+      // with align bottom, bottom edges should match (y=0)
+      const masterMinX = Math.min(...master.polygon.map((p) => p.x));
+      const masterMinY = Math.min(...master.polygon.map((p) => p.y));
+      
+      expect(masterMinX).toBe(7); // 6 + 1 gap
+      expect(masterMinY).toBe(0); // aligned to bottom
+    });
+
+    it('should lower rooms within zone using relative placement', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (30,30)
+          
+          zone social {
+            room living { rect (0, 0) (6, 5) }
+            room kitchen {
+              rect size (4, 5)
+              attach east_of living
+              align top
+              gap 0
+            }
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const living = lowered.rooms.find((r) => r.name === 'living')!;
+      const kitchen = lowered.rooms.find((r) => r.name === 'kitchen')!;
+      
+      // kitchen should be east of living
+      const livingMaxX = Math.max(...living.polygon.map((p) => p.x));
+      const kitchenMinX = Math.min(...kitchen.polygon.map((p) => p.x));
+      
+      expect(kitchenMinX).toBe(livingMaxX);
+    });
+
+    it('should center zone alignment', () => {
+      const source = `
+        plan {
+          footprint rect (0,0) (30,30)
+          
+          room entry { rect (5, 0) (15, 3) }
+          
+          zone social {
+            attach north_of entry
+            align center
+            gap 0
+            room living { rect (0, 0) (6, 5) }
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      const entry = lowered.rooms.find((r) => r.name === 'entry')!;
+      const living = lowered.rooms.find((r) => r.name === 'living')!;
+      
+      // entry is 10 wide (5 to 15), center at x=10
+      // living is 6 wide, centered should be at x=7 (10 - 3)
+      const livingMinX = Math.min(...living.polygon.map((p) => p.x));
+      const livingMaxX = Math.max(...living.polygon.map((p) => p.x));
+      const livingCenterX = (livingMinX + livingMaxX) / 2;
+      
+      const entryMinX = Math.min(...entry.polygon.map((p) => p.x));
+      const entryMaxX = Math.max(...entry.polygon.map((p) => p.x));
+      const entryCenterX = (entryMinX + entryMaxX) / 2;
+      
+      expect(livingCenterX).toBe(entryCenterX);
+    });
+  });
 });

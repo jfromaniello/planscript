@@ -332,6 +332,20 @@ export type Assertion =
   | AssertionRoomsConnected;
 
 // ============================================================================
+// Zones (Logical Grouping of Rooms)
+// ============================================================================
+
+export interface ZoneDefinition extends ASTNode {
+  type: 'ZoneDefinition';
+  name: string;
+  label?: string;
+  rooms: RoomDefinition[];
+  attach?: AttachDirective;  // Zone can attach to other zones or rooms
+  align?: AlignDirective;
+  gap?: GapDirective;
+}
+
+// ============================================================================
 // Plan (Top-Level Container)
 // ============================================================================
 
@@ -339,7 +353,8 @@ export interface PlanDefinition extends ASTNode {
   type: 'PlanDefinition';
   name: string;
   footprint: Footprint;
-  rooms: RoomDefinition[];
+  zones: ZoneDefinition[];
+  rooms: RoomDefinition[];  // Rooms not in any zone
   openings: Opening[];
   wallOverrides: WallThicknessOverride[];
   assertions: Assertion[];
