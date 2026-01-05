@@ -827,4 +827,105 @@ describe('Lowering', () => {
       expect(livingCenterX).toBe(entryCenterX);
     });
   });
+
+  describe('Courtyard Lowering', () => {
+    it('should lower courtyard rect to polygon', () => {
+      const source = `
+        plan {
+          footprint rect (0, 0) (30, 30)
+          courtyard patio {
+            rect (10, 10) (20, 25)
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      expect(lowered.courtyards).toHaveLength(1);
+      expect(lowered.courtyards[0].name).toBe('patio');
+      expect(lowered.courtyards[0].polygon).toHaveLength(4);
+      expect(lowered.courtyards[0].polygon).toContainEqual({ x: 10, y: 10 });
+      expect(lowered.courtyards[0].polygon).toContainEqual({ x: 20, y: 10 });
+      expect(lowered.courtyards[0].polygon).toContainEqual({ x: 20, y: 25 });
+      expect(lowered.courtyards[0].polygon).toContainEqual({ x: 10, y: 25 });
+    });
+
+    it('should preserve courtyard polygon geometry', () => {
+      const source = `
+        plan {
+          footprint rect (0, 0) (30, 30)
+          courtyard garden {
+            polygon (10, 10) (20, 10) (20, 25) (15, 28) (10, 25)
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      expect(lowered.courtyards[0].polygon).toHaveLength(5);
+      expect(lowered.courtyards[0].polygon).toContainEqual({ x: 10, y: 10 });
+      expect(lowered.courtyards[0].polygon).toContainEqual({ x: 20, y: 10 });
+      expect(lowered.courtyards[0].polygon).toContainEqual({ x: 15, y: 28 });
+    });
+
+    it('should preserve courtyard label', () => {
+      const source = `
+        plan {
+          footprint rect (0, 0) (30, 30)
+          courtyard patio_central {
+            rect (10, 10) (20, 25)
+            label "Central Patio"
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      expect(lowered.courtyards[0].label).toBe('Central Patio');
+    });
+
+    it('should lower multiple courtyards', () => {
+      const source = `
+        plan {
+          footprint rect (0, 0) (50, 50)
+          courtyard front_patio {
+            rect (10, 5) (20, 15)
+          }
+          courtyard back_garden {
+            rect (10, 35) (20, 45)
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      expect(lowered.courtyards).toHaveLength(2);
+      expect(lowered.courtyards[0].name).toBe('front_patio');
+      expect(lowered.courtyards[1].name).toBe('back_garden');
+    });
+
+    it('should normalize rect courtyard with inverted coordinates', () => {
+      const source = `
+        plan {
+          footprint rect (0, 0) (30, 30)
+          courtyard patio {
+            rect (20, 25) (10, 10)
+          }
+        }
+      `;
+      const ast = parse(source);
+      const lowered = lower(ast);
+
+      // Should produce correct polygon regardless of point order
+      const minX = Math.min(...lowered.courtyards[0].polygon.map((p) => p.x));
+      const maxX = Math.max(...lowered.courtyards[0].polygon.map((p) => p.x));
+      const minY = Math.min(...lowered.courtyards[0].polygon.map((p) => p.y));
+      const maxY = Math.max(...lowered.courtyards[0].polygon.map((p) => p.y));
+
+      expect(minX).toBe(10);
+      expect(maxX).toBe(20);
+      expect(minY).toBe(10);
+      expect(maxY).toBe(25);
+    });
+  });
 });

@@ -346,6 +346,31 @@ export interface ZoneDefinition extends ASTNode {
 }
 
 // ============================================================================
+// Courtyards (Open Spaces / Voids)
+// ============================================================================
+
+// Courtyard geometry - similar to room geometry but for open spaces
+export type CourtyardGeometry = CourtyardRect | CourtyardPolygon;
+
+export interface CourtyardRect extends ASTNode {
+  type: 'CourtyardRect';
+  p1: Point;
+  p2: Point;
+}
+
+export interface CourtyardPolygon extends ASTNode {
+  type: 'CourtyardPolygon';
+  points: Point[];
+}
+
+export interface CourtyardDefinition extends ASTNode {
+  type: 'CourtyardDefinition';
+  name: string;
+  label?: string;
+  geometry: CourtyardGeometry;
+}
+
+// ============================================================================
 // Plan (Top-Level Container)
 // ============================================================================
 
@@ -355,6 +380,7 @@ export interface PlanDefinition extends ASTNode {
   footprint: Footprint;
   zones: ZoneDefinition[];
   rooms: RoomDefinition[];  // Rooms not in any zone
+  courtyards: CourtyardDefinition[];  // Open spaces / voids
   openings: Opening[];
   wallOverrides: WallThicknessOverride[];
   assertions: Assertion[];

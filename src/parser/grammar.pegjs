@@ -112,6 +112,7 @@ PlanDefinition
         footprint: undefined as unknown as AST.Footprint,
         zones: [],
         rooms: [],
+        courtyards: [],
         openings: [],
         wallOverrides: [],
         assertions: [],
@@ -125,6 +126,8 @@ PlanDefinition
           result.zones.push(item);
         } else if (item.type === 'RoomDefinition') {
           result.rooms.push(item);
+        } else if (item.type === 'CourtyardDefinition') {
+          result.courtyards.push(item);
         } else if (item.type === 'DoorOpening' || item.type === 'WindowOpening') {
           result.openings.push(item);
         } else if (item.type === 'WallThicknessOverride') {
@@ -140,6 +143,7 @@ PlanDefinition
 PlanContent
   = Footprint
   / ZoneDefinition
+  / CourtyardDefinition
   / RoomDefinition
   / Opening
   / WallThicknessOverride
@@ -204,6 +208,56 @@ ZoneContent
   / GapDirective
 
 ZoneLabel
+  = "label"i _ value:String {
+      return { type: 'label', value };
+    }
+
+// ============================================================================
+// Courtyard Definition (Open Spaces / Voids)
+// ============================================================================
+
+CourtyardDefinition
+  = "courtyard"i _ name:Identifier _ "{" _ content:(_ CourtyardContent)* _ "}" {
+      const loc = location();
+      const result: AST.CourtyardDefinition = {
+        type: 'CourtyardDefinition',
+        name,
+        geometry: undefined as unknown as AST.CourtyardGeometry,
+        span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } }
+      };
+      
+      for (const [, item] of content) {
+        if (item.type === 'label') {
+          result.label = item.value;
+        } else if (item.type === 'CourtyardRect' || item.type === 'CourtyardPolygon') {
+          result.geometry = item;
+        }
+      }
+      
+      return result;
+    }
+
+CourtyardContent
+  = CourtyardGeometry
+  / CourtyardLabel
+
+CourtyardGeometry
+  = CourtyardPolygon
+  / CourtyardRect
+
+CourtyardRect
+  = "rect"i _ p1:Point _ p2:Point {
+      const loc = location();
+      return { type: 'CourtyardRect', p1, p2, span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.CourtyardRect;
+    }
+
+CourtyardPolygon
+  = "polygon"i _ points:PointList {
+      const loc = location();
+      return { type: 'CourtyardPolygon', points, span: { start: { line: loc.start.line, column: loc.start.column, offset: loc.start.offset }, end: { line: loc.end.line, column: loc.end.column, offset: loc.end.offset } } } as AST.CourtyardPolygon;
+    }
+
+CourtyardLabel
   = "label"i _ value:String {
       return { type: 'label', value };
     }

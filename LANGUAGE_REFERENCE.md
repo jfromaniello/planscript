@@ -13,6 +13,7 @@ This document provides a complete specification of the PlanScript language for d
 - [Plan Block](#plan-block)
 - [Footprint](#footprint)
 - [Zones](#zones)
+- [Courtyards](#courtyards)
 - [Rooms](#rooms)
   - [Rectangle with Two Corners](#rectangle-with-two-corners)
   - [Rectangle with Position and Size](#rectangle-with-position-and-size)
@@ -44,6 +45,7 @@ plan "<name>" {           # Required: the floor plan definition
   footprint ...           # Required: building boundary
   zone ... { ... }        # Zero or more zones (grouped rooms)
   room ... { ... }        # Zero or more standalone rooms
+  courtyard ... { ... }   # Zero or more courtyards (open spaces)
   opening ... { ... }     # Zero or more openings (doors/windows)
   assert ...              # Zero or more validation assertions
 }
@@ -281,6 +283,90 @@ zone private {
   room master { ... }
 }
 ```
+
+---
+
+## Courtyards
+
+Courtyards define open spaces or voids within the building footprint. They are commonly used for central patios, atriums, light wells, or garden spaces in U-shaped or courtyard-style floor plans.
+
+### Basic Courtyard Syntax
+
+```planscript
+courtyard <id> {
+  rect (<x1>, <y1>) (<x2>, <y2>)
+}
+```
+
+Or with polygon geometry:
+
+```planscript
+courtyard <id> {
+  polygon [
+    (<x1>, <y1>),
+    (<x2>, <y2>),
+    ...
+  ]
+}
+```
+
+### Courtyard with Label
+
+```planscript
+courtyard <id> {
+  rect (<x1>, <y1>) (<x2>, <y2>)
+  label "<display name>"
+}
+```
+
+### Courtyard Examples
+
+**Simple Central Patio:**
+
+```planscript
+plan "U-Shaped House" {
+  footprint rect (0, 0) (30, 40)
+  
+  # Left wing
+  room wing_left { rect (0, 0) (10, 40) label "Left Wing" }
+  
+  # Right wing
+  room wing_right { rect (20, 0) (30, 40) label "Right Wing" }
+  
+  # Back connection
+  room back { rect (10, 30) (20, 40) label "Back" }
+  
+  # Central courtyard (open space)
+  courtyard patio {
+    rect (10, 10) (20, 30)
+    label "Central Patio"
+  }
+}
+```
+
+**Irregular Courtyard:**
+
+```planscript
+courtyard garden {
+  polygon [
+    (12, 15),
+    (22, 15),
+    (22, 28),
+    (17, 32),
+    (12, 28)
+  ]
+  label "Garden"
+}
+```
+
+### Courtyard Rendering
+
+In SVG output, courtyards are rendered with:
+- Light green fill color (to indicate open/outdoor space)
+- Dashed border stroke
+- Italic label text in green
+
+This distinguishes them visually from enclosed rooms.
 
 ---
 
@@ -876,7 +962,7 @@ plan "Studio Apartment" {
 ### Keywords
 
 ```
-units, origin, defaults, plan, footprint, zone, room, opening, assert,
+units, origin, defaults, plan, footprint, zone, room, courtyard, opening, assert,
 rect, polygon, at, size, attach, align, gap, span, from, to, label,
 door, window, between, and, on, shared_edge, width, height, sill,
 north_of, south_of, east_of, west_of,

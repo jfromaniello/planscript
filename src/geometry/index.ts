@@ -1,6 +1,6 @@
 import type { Point, Position } from '../ast/types.js';
 import type { LoweredProgram } from '../lowering/index.js';
-import type { GeometryIR, Polygon, WallSegment, OpeningPlacement, ResolvedRoom } from './types.js';
+import type { GeometryIR, Polygon, WallSegment, OpeningPlacement, ResolvedRoom, ResolvedCourtyard } from './types.js';
 
 // Helper to resolve position to absolute value given wall length
 function resolvePosition(position: Position, wallLength: number): number {
@@ -482,12 +482,20 @@ export function generateGeometry(lowered: LoweredProgram): GeometryIR {
     area: calculatePolygonArea(room.polygon),
   }));
 
+  const courtyards: ResolvedCourtyard[] = lowered.courtyards.map((courtyard) => ({
+    name: courtyard.name,
+    label: courtyard.label,
+    polygon: { points: courtyard.polygon },
+    area: calculatePolygonArea(courtyard.polygon),
+  }));
+
   const walls = generateWalls(rooms, footprint);
   const openings = placeOpenings(lowered.openings, walls, rooms, lowered.defaults);
 
   return {
     footprint,
     rooms,
+    courtyards,
     walls,
     openings,
   };

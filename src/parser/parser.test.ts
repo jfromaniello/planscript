@@ -1300,4 +1300,99 @@ describe('Parser', () => {
       expect(result.plan.zones[0].rooms[1].attach?.target).toBe('living');
     });
   });
+
+  describe('Courtyards', () => {
+    it('should parse courtyard with rect geometry', () => {
+      const source = `
+        plan {
+          footprint rect (0, 0) (30, 30)
+          room wing_left { rect (0, 0) (10, 30) }
+          room wing_right { rect (20, 0) (30, 30) }
+          courtyard patio {
+            rect (10, 10) (20, 25)
+          }
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.courtyards).toHaveLength(1);
+      expect(result.plan.courtyards[0].name).toBe('patio');
+      expect(result.plan.courtyards[0].geometry.type).toBe('CourtyardRect');
+    });
+
+    it('should parse courtyard with polygon geometry', () => {
+      const source = `
+        plan {
+          footprint rect (0, 0) (30, 30)
+          courtyard garden {
+            polygon (10, 10) (20, 10) (20, 25) (15, 28) (10, 25)
+          }
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.courtyards).toHaveLength(1);
+      expect(result.plan.courtyards[0].name).toBe('garden');
+      expect(result.plan.courtyards[0].geometry.type).toBe('CourtyardPolygon');
+      if (result.plan.courtyards[0].geometry.type === 'CourtyardPolygon') {
+        expect(result.plan.courtyards[0].geometry.points).toHaveLength(5);
+      }
+    });
+
+    it('should parse courtyard with label', () => {
+      const source = `
+        plan {
+          footprint rect (0, 0) (30, 30)
+          courtyard patio_central {
+            rect (10, 10) (20, 25)
+            label "Central Patio"
+          }
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.courtyards[0].label).toBe('Central Patio');
+    });
+
+    it('should parse multiple courtyards', () => {
+      const source = `
+        plan {
+          footprint rect (0, 0) (50, 50)
+          courtyard front_patio {
+            rect (10, 5) (20, 15)
+            label "Front Patio"
+          }
+          courtyard back_garden {
+            rect (10, 35) (20, 45)
+            label "Back Garden"
+          }
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.courtyards).toHaveLength(2);
+      expect(result.plan.courtyards[0].name).toBe('front_patio');
+      expect(result.plan.courtyards[1].name).toBe('back_garden');
+    });
+
+    it('should parse courtyards mixed with rooms and zones', () => {
+      const source = `
+        plan {
+          footprint rect (0, 0) (40, 40)
+          
+          room entry { rect (0, 0) (10, 10) }
+          
+          zone living_area {
+            attach east_of entry
+            room living { rect (0, 0) (15, 10) }
+          }
+          
+          courtyard central_patio {
+            rect (10, 15) (30, 35)
+            label "Patio"
+          }
+        }
+      `;
+      const result = parse(source);
+      expect(result.plan.rooms).toHaveLength(1);
+      expect(result.plan.zones).toHaveLength(1);
+      expect(result.plan.courtyards).toHaveLength(1);
+    });
+  });
 });

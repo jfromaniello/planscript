@@ -18,6 +18,7 @@ import type {
   DimensionValue,
   SizeValue,
   ZoneDefinition,
+  CourtyardDefinition,
 } from '../ast/types.js';
 
 // ============================================================================
@@ -40,6 +41,12 @@ export interface ZoneBounds {
   maxY: number;
 }
 
+export interface LoweredCourtyard {
+  name: string;
+  label?: string;
+  polygon: Point[];
+}
+
 export interface Defaults {
   doorWidth?: number;
   windowWidth?: number;
@@ -49,6 +56,7 @@ export interface LoweredProgram {
   name: string;
   footprint: Point[];
   rooms: LoweredRoom[];
+  courtyards: LoweredCourtyard[];
   openings: Program['plan']['openings'];
   wallOverrides: Program['plan']['wallOverrides'];
   assertions: Program['plan']['assertions'];
@@ -618,6 +626,27 @@ function lowerZone(
 }
 
 // ============================================================================
+// Courtyard Lowering
+// ============================================================================
+
+function lowerCourtyard(courtyard: CourtyardDefinition): LoweredCourtyard {
+  let polygon: Point[];
+  
+  if (courtyard.geometry.type === 'CourtyardRect') {
+    const { p1, p2 } = courtyard.geometry;
+    polygon = rectDiagonalToPolygon(p1, p2);
+  } else {
+    polygon = courtyard.geometry.points;
+  }
+  
+  return {
+    name: courtyard.name,
+    label: courtyard.label,
+    polygon,
+  };
+}
+
+// ============================================================================
 // Main Lowering Function
 // ============================================================================
 
@@ -650,6 +679,12 @@ export function lower(program: Program): LoweredProgram {
     }
   }
 
+  // Lower courtyards
+  const courtyards: LoweredCourtyard[] = [];
+  for (const courtyard of plan.courtyards) {
+    courtyards.push(lowerCourtyard(courtyard));
+  }
+
   // Extract defaults
   const defaults: Defaults = {};
   if (program.defaults) {
@@ -665,6 +700,7 @@ export function lower(program: Program): LoweredProgram {
     name: plan.name,
     footprint,
     rooms: Array.from(resolvedRooms.values()),
+    courtyards,
     openings: plan.openings,
     wallOverrides: plan.wallOverrides,
     assertions: plan.assertions,

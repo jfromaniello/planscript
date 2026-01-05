@@ -1,5 +1,5 @@
 import type { Point } from '../ast/types.js';
-import type { GeometryIR, Polygon, WallSegment, OpeningPlacement, ResolvedRoom } from '../geometry/types.js';
+import type { GeometryIR, Polygon, WallSegment, OpeningPlacement, ResolvedRoom, ResolvedCourtyard } from '../geometry/types.js';
 
 // ============================================================================
 // SVG Export Options
@@ -19,6 +19,9 @@ export interface SVGExportOptions {
   roomFillColor?: string;
   roomStrokeColor?: string;
   roomStrokeWidth?: number;
+  courtyardFillColor?: string;
+  courtyardStrokeColor?: string;
+  courtyardStrokeWidth?: number;
   doorColor?: string;
   windowColor?: string;
   footprintColor?: string;
@@ -44,6 +47,9 @@ const defaultOptions: Required<SVGExportOptions> = {
   roomFillColor: '#ecf0f1',
   roomStrokeColor: '#bdc3c7',
   roomStrokeWidth: 1,
+  courtyardFillColor: '#d5f5e3',  // Light green for open spaces
+  courtyardStrokeColor: '#27ae60', // Darker green stroke
+  courtyardStrokeWidth: 2,
   doorColor: '#e74c3c',
   windowColor: '#3498db',
   footprintColor: '#7f8c8d',
@@ -330,11 +336,29 @@ function generateRoomsSVG(rooms: ResolvedRoom[], t: Transform, opts: Required<SV
   return elements.join('\n    ');
 }
 
-function generateLabelsSVG(rooms: ResolvedRoom[], t: Transform, opts: Required<SVGExportOptions>): string {
+function generateCourtyardsSVG(courtyards: ResolvedCourtyard[], t: Transform, opts: Required<SVGExportOptions>): string {
+  const elements: string[] = [];
+
+  for (const courtyard of courtyards) {
+    const points = transformPolygon(courtyard.polygon.points, t);
+    const path = pointsToPath(points);
+    
+    // Courtyard fill with distinct styling
+    elements.push(
+      `<path d="${path}" fill="${opts.courtyardFillColor}" stroke="${opts.courtyardStrokeColor}" ` +
+      `stroke-width="${opts.courtyardStrokeWidth}" stroke-dasharray="4,2" />`
+    );
+  }
+
+  return elements.join('\n    ');
+}
+
+function generateLabelsSVG(rooms: ResolvedRoom[], courtyards: ResolvedCourtyard[], t: Transform, opts: Required<SVGExportOptions>): string {
   if (!opts.showLabels) return '';
   
   const elements: string[] = [];
 
+  // Room labels
   for (const room of rooms) {
     if (!room.label) continue;
     
@@ -371,6 +395,42 @@ function generateLabelsSVG(rooms: ResolvedRoom[], t: Transform, opts: Required<S
       `<text x="${screenCenter.x.toFixed(2)}" y="${screenCenter.y.toFixed(2)}" ` +
       `font-size="${fontSize}" fill="${opts.labelColor}" ` +
       `text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">` +
+      `${escapeXml(label)}</text>`
+    );
+  }
+
+  // Courtyard labels
+  for (const courtyard of courtyards) {
+    if (!courtyard.label) continue;
+    
+    const worldCenter = getLabelPosition(courtyard.polygon.points);
+    const screenCenter = transformPoint(worldCenter, t);
+    
+    // Calculate courtyard size in screen coordinates to adapt font size
+    const worldBounds = calculatePolygonBounds(courtyard.polygon.points);
+    const screenWidth = worldBounds.width * t.scale;
+    const screenHeight = worldBounds.height * t.scale;
+    
+    const label = courtyard.label;
+    const baseFontSize = opts.labelFontSize;
+    const estimatedTextWidth = 0.6 * baseFontSize * label.length;
+    
+    const maxTextWidth = screenWidth * 0.85;
+    const maxTextHeight = screenHeight * 0.4;
+    
+    let fontSize = baseFontSize;
+    if (estimatedTextWidth > maxTextWidth) {
+      fontSize = Math.floor((maxTextWidth / label.length) / 0.6);
+    }
+    fontSize = Math.min(fontSize, maxTextHeight);
+    fontSize = Math.max(fontSize, 6);
+    fontSize = Math.min(fontSize, baseFontSize);
+    
+    // Use courtyard stroke color for label to match the style
+    elements.push(
+      `<text x="${screenCenter.x.toFixed(2)}" y="${screenCenter.y.toFixed(2)}" ` +
+      `font-size="${fontSize}" fill="${opts.courtyardStrokeColor}" ` +
+      `text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-style="italic">` +
       `${escapeXml(label)}</text>`
     );
   }
@@ -1090,6 +1150,9 @@ export function exportSVG(geometry: GeometryIR, options: SVGExportOptions = {}):
   <!-- Rooms -->
   ${generateRoomsSVG(geometry.rooms, transform, opts)}
   
+  <!-- Courtyards -->
+  ${generateCourtyardsSVG(geometry.courtyards, transform, opts)}
+  
   <!-- Walls -->
   ${generateWallsSVG(geometry.walls, transform, opts)}
   
@@ -1097,7 +1160,7 @@ export function exportSVG(geometry: GeometryIR, options: SVGExportOptions = {}):
   ${generateOpeningsSVG(geometry.openings, geometry.walls, transform, opts)}
   
   <!-- Labels -->
-  ${generateLabelsSVG(geometry.rooms, transform, opts)}
+  ${generateLabelsSVG(geometry.rooms, geometry.courtyards, transform, opts)}
   
   <!-- Dimensions -->
   ${dimensionsSVG}

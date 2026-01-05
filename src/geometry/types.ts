@@ -36,9 +36,17 @@ export interface ResolvedRoom {
   area: number;
 }
 
+export interface ResolvedCourtyard {
+  name: string;
+  label?: string;
+  polygon: Polygon;
+  area: number;
+}
+
 export interface GeometryIR {
   footprint: Polygon;
   rooms: ResolvedRoom[];
+  courtyards: ResolvedCourtyard[];
   walls: WallSegment[];
   openings: OpeningPlacement[];
 }
