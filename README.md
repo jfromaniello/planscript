@@ -1,8 +1,34 @@
-# PlanScript
+# 🏠 PlanScript
 
-A DSL for defining floor plans. Compile `.psc` files to SVG or JSON.
+A **deterministic, textual DSL** for defining 2D architectural floor plans. Write human-readable code, compile to precise geometry.
 
-## Example
+<p align="center">
+  <img src="examples/house.svg" alt="Floor plan" width="50%">
+</p>
+
+## ✨ Features
+
+- **📝 Human & LLM Friendly** — Simple, repetitive syntax that's easy to write and generate
+- **🎯 Deterministic** — Same input always produces the same output, no heuristics or AI magic
+- **🔧 Compiler-based** — Parse → Validate → Generate pipeline with clear error messages
+- **📐 Precise Geometry** — Exact coordinates, walls, and openings from high-level descriptions
+- **🖼️ Multiple Exports** — SVG (with optional dimensions), JSON geometry IR
+- **✅ Built-in Validation** — Assert constraints like no overlaps, minimum areas, containment
+
+## 🎯 Design Philosophy
+
+PlanScript is intentionally **limited in scope**:
+
+| ✅ What it does | ❌ What it doesn't do |
+|-----------------|----------------------|
+| Spatial layout (rooms, walls, doors, windows) | Plumbing, electrical, HVAC |
+| Deterministic compilation | Generative/AI design |
+| Precise geometry output | Aesthetic decisions |
+| Clear validation errors | "Best layout" optimization |
+
+> *It trades creativity for **precision, repeatability, and correctness**.*
+
+## 📖 Example
 
 ```planscript
 units m
@@ -48,6 +74,9 @@ plan "Example House" {
   opening door d2 { between living and kitchen on shared_edge at 50% }
   opening door d3 { between hall and bedroom on shared_edge at 50% }
   opening window w1 { on living.edge south at 2.0 }
+
+  assert no_overlap rooms
+  assert inside footprint all_rooms
 }
 ```
 
@@ -59,16 +88,16 @@ plan "Example House" {
 </p>
 
 <p align="center">
-  <em>Without dimensions</em> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <em>With <code>--dimensions</code> flag</em>
+  <em>Default output</em> ・ <em>With <code>--dimensions</code> flag</em>
 </p>
 
-## Installation
+## 📦 Installation
 
 ```bash
 npm install planscript
 ```
 
-## CLI Usage
+## 🖥️ CLI Usage
 
 ```bash
 # Compile to SVG
@@ -84,7 +113,7 @@ planscript house.psc --json house.json
 planscript house.psc --svg house.svg --json house.json
 ```
 
-## Library Usage
+## 📚 Library Usage
 
 ### Simple Compilation
 
@@ -92,28 +121,9 @@ planscript house.psc --svg house.svg --json house.json
 import { compile } from 'planscript';
 
 const source = `
-  units m
-  defaults {
-    door_width 0.9
-  }
   plan "My House" {
-    footprint rect (0,0) (15,12)
-
-    room living {
-      rect (1,1) (8,6)
-      label "Living Room"
-    }
-
-    room kitchen {
-      rect (8,1) (14,6)
-      label "Kitchen"
-    }
-
-    opening door d1 {
-      between living and kitchen
-      on shared_edge
-      at 50%
-    }
+    footprint rect (0,0) (10,8)
+    room living { rect (0,0) (10,8) label "Living Room" }
   }
 `;
 
@@ -155,14 +165,13 @@ if (errors.length > 0) {
 }
 
 // 5. Export
-const svg = exportSVG(geometry, { width: 800, height: 600 });
-const json = exportJSON(geometry, { pretty: true }, ast);
+const svg = exportSVG(geometry, { showDimensions: true });
+const json = exportJSON(geometry, { pretty: true });
 ```
 
 ### Export Options
 
 ```typescript
-// SVG options
 const svg = exportSVG(geometry, {
   width: 1000,           // Canvas width (default: 1000)
   height: 800,           // Canvas height (default: 800)
@@ -174,20 +183,17 @@ const svg = exportSVG(geometry, {
   doorColor: '#e74c3c',
   windowColor: '#3498db',
 });
-
-// JSON options
-const json = exportJSON(geometry, {
-  pretty: true  // Pretty-print JSON (default: false)
-}, ast);
 ```
 
-## Language Syntax
+## 📐 Language Syntax
 
-### Basic Structure
+For the complete language specification, see the **[Language Reference](LANGUAGE_REFERENCE.md)**.
+
+### Quick Overview
 
 ```planscript
 units m                    # meters, cm, mm, ft, in
-origin (0,0)               # optional origin point
+
 defaults {
   door_width 0.9           # default door width
   window_width 1.2         # default window width
@@ -196,81 +202,42 @@ defaults {
 plan "House Name" {
   footprint rect (0,0) (20,15)
 
-  # rooms...
-  # openings...
-  # assertions...
+  # Rooms - multiple ways to define
+  room living { rect (0,0) (8,6) }                           # two corners
+  room bed { rect at (0,6) size (4,4) }                      # position + size
+  room kitchen { rect size (4,6) attach east_of living }     # relative placement
+  room hall { rect span x from living.left to bed.right y (6,8) }  # span
+
+  # Openings
+  opening door d1 { between living and hall on shared_edge at 50% }
+  opening window w1 { on living.edge south at 2.0 width 1.5 }
+
+  # Validation
+  assert no_overlap rooms
+  assert inside footprint all_rooms
+  assert min_room_area bed >= 12
 }
 ```
 
-### Room Definitions
+## 🤖 Using with LLMs
 
-```planscript
-# Rectangle with two corners
-room living {
-  rect (0,0) (8,6)
-  label "Living Room"
-}
+PlanScript is designed to be **LLM-friendly**. When asking ChatGPT, Claude, or other LLMs to generate floor plans:
 
-# Rectangle with position and size
-room bedroom {
-  rect at (0,6) size (4,4)
-}
+1. **Provide the [LANGUAGE_REFERENCE.md](LANGUAGE_REFERENCE.md)** as context
+2. Describe your floor plan requirements
+3. The LLM can generate valid PlanScript code
+4. Compile and iterate on errors if needed
 
-# Relative placement
-room kitchen {
-  rect size (4,6)
-  attach east_of living
-  align top
-  gap 0
-}
+The deterministic nature means: **LLM generates → Compiler validates → LLM fixes → Repeat until valid**
 
-# Span syntax (reference other rooms)
-room hallway {
-  rect span x from living.left to kitchen.right y (6, 8)
-}
-```
-
-### Openings
-
-```planscript
-# Door between rooms
-opening door d1 {
-  between living and kitchen
-  on shared_edge
-  at 50%              # 50% along wall (centered)
-  width 0.9           # optional if defaults set
-}
-
-# Window on room edge
-opening window w1 {
-  on living.edge south
-  at 2.0              # 2 meters from wall start
-  width 1.5
-  sill 0.9            # sill height
-}
-```
-
-### Position Syntax
-
-- `at 50%` - percentage along wall (0-100)
-- `at 2.0` - absolute distance in meters from wall start
-
-### Assertions
-
-```planscript
-assert no_overlap rooms              # rooms don't overlap
-assert inside footprint all_rooms    # rooms within footprint
-assert min_room_area bedroom >= 12   # minimum area check
-```
-
-## VS Code Extension
+## 🔌 VS Code Extension
 
 The PlanScript VS Code extension provides:
-- Syntax highlighting
-- Go to Definition (Ctrl+Click)
-- Hover information
-- Document outline
-- Autocomplete
+- 🎨 Syntax highlighting
+- 🔗 Go to Definition (Ctrl+Click on room names)
+- 💬 Hover information
+- 📋 Document outline
+- ⌨️ Autocomplete
 
 ### Installation
 
@@ -282,18 +249,20 @@ The PlanScript VS Code extension provides:
 
 **From GitHub:**
 ```bash
-# Clone the extension repo
 git clone https://github.com/jfromaniello/vscode-planscript
 cd vscode-planscript
-
-# Install and build
-npm install
-npm run compile
-
-# Install to VS Code
+npm install && npm run compile
 code --install-extension .
 ```
 
-## License
+## 🗺️ Roadmap
+
+Future extensions (not in v1):
+- 🔄 Curved walls (`arc`)
+- 🏢 Multi-level plans
+- 🪑 Furniture placement
+- 📏 More export formats (DXF, PDF)
+
+## 📄 License
 
 MIT

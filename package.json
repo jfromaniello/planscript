@@ -18,6 +18,7 @@
     "dist",
     "examples",
     "README.md",
+    "LANGUAGE_REFERENCE.md",
     "LICENSE"
   ],
   "scripts": {
