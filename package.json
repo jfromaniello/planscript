@@ -1,6 +1,6 @@
 {
   "name": "planscript",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "PlanScript - A DSL for defining floor plans",
   "type": "module",
   "main": "dist/index.js",
