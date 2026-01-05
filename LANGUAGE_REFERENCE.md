@@ -6,6 +6,7 @@ This document provides a complete specification of the PlanScript language for d
 
 ## Table of Contents
 
+- [Quick Start](#quick-start)
 - [File Structure](#file-structure)
 - [Units](#units)
 - [Origin](#origin)
@@ -30,6 +31,78 @@ This document provides a complete specification of the PlanScript language for d
 - [Assertions](#assertions)
 - [Comments](#comments)
 - [Complete Examples](#complete-examples)
+
+---
+
+## Quick Start
+
+### Installation
+
+```bash
+npm install -g planscript
+```
+
+Or use directly with npx (no installation required):
+
+```bash
+npx planscript myplan.psc --svg output.svg
+```
+
+### CLI Usage
+
+```bash
+planscript <input.psc> [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--svg <file>` | Write SVG output to file |
+| `--json <file>` | Write JSON geometry output to file |
+| `--dimensions` | Include dimension lines in SVG |
+| `--no-labels` | Don't show room labels in SVG |
+| `--no-svg` | Don't generate SVG (useful with --json) |
+| `--help`, `-h` | Show help message |
+
+**Examples:**
+
+```bash
+# Compile and generate SVG
+planscript house.psc --svg house.svg
+
+# Include dimension lines
+planscript house.psc --svg house.svg --dimensions
+
+# Generate both SVG and JSON
+planscript house.psc --svg house.svg --json house.json
+
+# Validate only (check for errors without generating output)
+planscript house.psc --no-svg
+
+# Use npx without installing
+npx planscript examples/house.psc --svg output.svg
+```
+
+### Validation Output
+
+If compilation fails, PlanScript shows detailed error messages:
+
+```
+Compilation failed:
+  validate [E201]: Rooms "living" and "kitchen" overlap
+  validate [E130]: Room "bedroom" is outside the footprint
+```
+
+If successful:
+
+```
+Compilation successful!
+  SVG written to: house.svg
+  Rooms: 5
+  Walls: 12
+  Openings: 6
+```
 
 ---
 

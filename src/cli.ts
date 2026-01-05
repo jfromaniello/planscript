@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync } from 'fs';
-import { compile } from './compiler.js';
+import { resolve } from 'path';
+import { compile, CompileError } from './compiler.js';
 
 const args = process.argv.slice(2);
 
@@ -28,7 +29,32 @@ Examples:
   process.exit(0);
 }
 
+/**
+ * Format error in a way that editors can parse for click-to-navigate.
+ * Standard format: file:line:column: error: message
+ */
+function formatError(file: string, error: CompileError): string {
+  const parts: string[] = [];
+  
+  // file:line:column (clickable in most editors/terminals)
+  if (error.location) {
+    parts.push(`${file}:${error.location.line}:${error.location.column}`);
+  } else {
+    parts.push(file);
+  }
+  
+  // error type with code
+  const errorType = error.code ? `error[${error.code}]` : 'error';
+  parts.push(errorType);
+  
+  // message
+  parts.push(error.message);
+  
+  return parts.join(': ');
+}
+
 const inputFile = args[0];
+const absoluteInputFile = resolve(inputFile);
 let svgOutput: string | undefined;
 let jsonOutput: string | undefined;
 let emitSVG = true;
@@ -65,12 +91,12 @@ try {
   });
 
   if (!result.success) {
-    console.error('Compilation failed:');
+    console.error('');
     for (const error of result.errors) {
-      const location = error.location ? ` at line ${error.location.line}:${error.location.column}` : '';
-      const code = error.code ? ` [${error.code}]` : '';
-      console.error(`  ${error.phase}${code}${location}: ${error.message}`);
+      console.error(formatError(absoluteInputFile, error));
     }
+    console.error('');
+    console.error(`Compilation failed with ${result.errors.length} error(s).`);
     process.exit(1);
   }
 
@@ -95,9 +121,9 @@ try {
   }
 } catch (e) {
   if (e instanceof Error) {
-    console.error(`Error: ${e.message}`);
+    console.error(`${absoluteInputFile}: error: ${e.message}`);
   } else {
-    console.error('Unknown error occurred');
+    console.error(`${absoluteInputFile}: error: Unknown error occurred`);
   }
   process.exit(1);
 }
