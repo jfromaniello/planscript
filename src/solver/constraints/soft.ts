@@ -153,6 +153,12 @@ export function scoreCandidate(
     score -= areaDiff * 5;
   }
 
+  // Penalty for exceeding maxArea (soft constraint)
+  if (room.maxArea !== undefined && area > room.maxArea) {
+    const excessRatio = (area - room.maxArea) / room.maxArea;
+    score -= excessRatio * 10; // Stronger penalty for exceeding max
+  }
+
   // Look-ahead penalty: avoid blocking hall-adjacent space for future rooms
   // This is critical for ensuring all rooms that need hall access can get it
   score += scoreHallAdjacencyLookahead(candidateRect, room, placedRooms, frame, intent);

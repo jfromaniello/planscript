@@ -1,58 +1,43 @@
 /**
  * Intent types for the floor plan solver.
  * These define the input model that LLMs/humans generate.
+ * 
+ * Types are derived from TypeBox schemas in ./schema.ts
+ * This provides runtime validation, TypeScript types, and JSON Schema generation.
  */
 
-export type Units = 'm' | 'cm';
+// Re-export types from schema (single source of truth)
+export type {
+  Units,
+  Footprint,
+  ZoneId,
+  EdgeDirection,
+  BandSpec,
+  DepthSpec,
+  RoomId,
+  RoomType,
+  RoomCategory,
+  RoomSpec,
+  OpeningDefaults,
+  HardConstraints,
+  SoftConstraintKey,
+  AccessRule,
+  AccessRulePreset,
+  LayoutIntent,
+} from './schema.js';
 
-export type Footprint =
-  | { kind: 'rect'; min: [number, number]; max: [number, number] }
-  | { kind: 'polygon'; points: Array<[number, number]> };
-
-export type ZoneId = string; // e.g., "front", "middle", "back", "left", "right"
-
-export type EdgeDirection = 'north' | 'south' | 'east' | 'west';
-
-export interface BandSpec {
-  id: ZoneId;
-  minWidth?: number;
-  targetWidth?: number;
-  maxWidth?: number;
-}
-
-export interface DepthSpec {
-  id: ZoneId;
-  minDepth?: number;
-  targetDepth?: number;
-  maxDepth?: number;
-}
-
-export type RoomId = string;
-
-export type RoomType =
-  | 'bedroom'
-  | 'bath'
-  | 'kitchen'
-  | 'dining'
-  | 'living'
-  | 'office'
-  | 'garage'
-  | 'laundry'
-  | 'hall'
-  | 'corridor'
-  | 'foyer'
-  | 'stairwell'
-  | 'closet'
-  | 'ensuite'
-  | 'utility'
-  | 'storage'
-  | 'other';
-
-/**
- * Room type categories for access rules.
- * These are built-in and used when access rules reference categories.
- */
-export type RoomCategory = 'circulation' | 'private' | 'public' | 'service';
+// Import types for internal use
+import type {
+  RoomType,
+  RoomCategory,
+  AccessRule,
+  AccessRulePreset,
+  LayoutIntent,
+  Footprint,
+  RoomSpec,
+  BandSpec,
+  DepthSpec,
+} from './schema.js';
 
 export const ROOM_CATEGORIES: Record<RoomCategory, RoomType[]> = {
   circulation: ['hall', 'corridor', 'foyer', 'stairwell'],
@@ -66,7 +51,7 @@ export const ROOM_CATEGORIES: Record<RoomCategory, RoomType[]> = {
  */
 export function getRoomCategory(type: RoomType): RoomCategory | null {
   for (const [category, types] of Object.entries(ROOM_CATEGORIES)) {
-    if (types.includes(type)) {
+    if ((types as RoomType[]).includes(type)) {
       return category as RoomCategory;
     }
   }
@@ -86,113 +71,6 @@ export function isRoomTypeInCategory(type: RoomType, category: RoomCategory): bo
 export function isCirculationType(type: RoomType): boolean {
   return ROOM_CATEGORIES.circulation.includes(type);
 }
-
-export interface RoomSpec {
-  id: RoomId;
-  label?: string;
-
-  // Geometry targets (solver tries to match)
-  minArea: number;
-  targetArea?: number;
-  minWidth?: number;
-  minHeight?: number;
-  maxWidth?: number;
-  maxHeight?: number;
-  aspect?: { min: number; max: number }; // w/h ratio
-  
-  /** 
-   * If true, room will try to fill its entire cell rather than just meeting area targets.
-   * Useful for rooms that should expand to fill available space.
-   */
-  fillCell?: boolean;
-
-  // Placement intent
-  preferredBands?: ZoneId[];
-  preferredDepths?: ZoneId[];
-  mustTouchExterior?: boolean;
-  mustTouchEdge?: EdgeDirection; // e.g., garden edge
-
-  // Adjacency
-  adjacentTo?: RoomId[];
-  avoidAdjacentTo?: RoomId[];
-
-  // Connectivity
-  needsAccessFrom?: RoomId[];
-  /** Mark this room as circulation space (overrides type-based detection) */
-  isCirculation?: boolean;
-  /** This room has the main exterior door (entry point for reachability) */
-  hasExteriorDoor?: boolean;
-  
-  /** 
-   * For bathrooms: marks this as an ensuite (private to one bedroom).
-   * If not specified, inferred from adjacencies:
-   * - adjacentTo contains exactly one bedroom → ensuite
-   * - adjacentTo contains hall/circulation or multiple bedrooms → shared
-   */
-  isEnsuite?: boolean;
-
-  // Room type helps with defaults (windows, doors, scoring)
-  type: RoomType;
-}
-
-export interface OpeningDefaults {
-  doorWidth: number;
-  windowWidth: number;
-  exteriorDoorWidth?: number;
-  corridorWidth?: number; // defaults to 1.2m
-}
-
-export type SoftConstraintKey =
-  | 'respectPreferredZones'
-  | 'adjacencySatisfaction'
-  | 'minimizeHallArea'
-  | 'maximizeExteriorGlazing'
-  | 'bathroomClustering'
-  | 'compactness'
-  | 'minimizeExteriorWallBreaks';
-
-export interface HardConstraints {
-  noOverlap: boolean;
-  insideFootprint: boolean;
-  /** All rooms must be reachable from the entry point (front door) */
-  allRoomsReachable?: boolean;
-}
-
-/**
- * Access rule defining which room types can have doors to other types.
- * 
- * Example: Bedrooms should only be accessible from circulation spaces:
- * {
- *   roomType: "bedroom",
- *   accessibleFrom: ["circulation"]  // category or specific types
- * }
- */
-export interface AccessRule {
-  /** The room type this rule applies to */
-  roomType: RoomType | RoomCategory;
-  
-  /** 
-   * Which room types/categories can have doors leading TO this room.
-   * Can be specific types ("hall", "foyer") or categories ("circulation").
-   * If not specified, any room can have a door to this room.
-   */
-  accessibleFrom?: (RoomType | RoomCategory)[];
-  
-  /**
-   * Which room types/categories this room can have doors leading TO.
-   * Useful for things like "bedroom can lead to ensuite/closet".
-   * If not specified, determined by other rooms' accessibleFrom rules.
-   */
-  canLeadTo?: (RoomType | RoomCategory)[];
-}
-
-/**
- * Predefined access rule presets for common architectural patterns.
- */
-export type AccessRulePreset = 
-  | 'open_plan'           // Minimal restrictions, open flow
-  | 'traditional'         // Bedrooms from circulation, formal dining
-  | 'privacy_focused';    // Strict private/public separation
 
 /**
  * Get access rules for a preset.
@@ -239,34 +117,6 @@ export function getAccessRulePreset(preset: AccessRulePreset): AccessRule[] {
     default:
       return [];
   }
-}
-
-export interface LayoutIntent {
-  units: Units;
-  footprint: Footprint;
-
-  // Optional decomposition hints (strongly recommended)
-  bands?: BandSpec[];
-  depths?: DepthSpec[];
-
-  // Global anchors
-  frontEdge: EdgeDirection;
-  gardenEdge?: EdgeDirection;
-
-  defaults: OpeningDefaults;
-
-  rooms: RoomSpec[];
-
-  // Hard constraints
-  hard: HardConstraints;
-
-  // Access rules - control which rooms can connect to which
-  // Can use a preset or custom rules (custom rules override preset)
-  accessRulePreset?: AccessRulePreset;
-  accessRules?: AccessRule[];
-
-  // Soft constraints weights (tunable)
-  weights?: Partial<Record<SoftConstraintKey, number>>;
 }
 
 /**
@@ -355,6 +205,7 @@ function convertRoomSpecToMeters(r: RoomSpec): RoomSpec {
     ...r,
     minArea: r.minArea / 10000,
     targetArea: r.targetArea !== undefined ? r.targetArea / 10000 : undefined,
+    maxArea: r.maxArea !== undefined ? r.maxArea / 10000 : undefined,
     minWidth: r.minWidth !== undefined ? r.minWidth / 100 : undefined,
     minHeight: r.minHeight !== undefined ? r.minHeight / 100 : undefined,
     maxWidth: r.maxWidth !== undefined ? r.maxWidth / 100 : undefined,

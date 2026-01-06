@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/jfromaniello/planscript/main/intent-schema.json",
   "$comment": "L-shaped house with public wing (west) and private master suite (east wing). The living room spans across the corner connecting both wings.",
   "units": "m",
   "footprint": {

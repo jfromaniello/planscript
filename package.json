@@ -18,6 +18,7 @@
     "dist",
     "examples",
     "README.md",
+    "INTENT_REFERENCE.md",
     "LANGUAGE_REFERENCE.md",
     "LICENSE"
   ],
@@ -32,6 +33,7 @@
     "examples:intent": "npm run build && ./scripts/build-examples-intent.sh",
     "examples:psc": "npm run build && ./scripts/build-examples-psc.sh",
     "examples": "npm run examples:intent && npm run examples:psc",
+    "intent-schema": "node dist/cli.js intent-schema --out intent-schema.json",
     "prepare": "npm run build"
   },
   "keywords": [
@@ -55,5 +57,8 @@
     "ts-pegjs": "^4.2.1",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.47"
   }
 }

@@ -194,6 +194,24 @@ export function checkArchitecturalRules(
     }
   }
 
+  // Rule: Kitchen/dining should not be accessed through bathroom or bedroom
+  // These are "clean" rooms that shouldn't require passing through "private" rooms
+  const cleanRoomTypes: RoomType[] = ['kitchen', 'dining'];
+  const privateAccessTypes: RoomType[] = ['bath', 'ensuite', 'bedroom', 'closet'];
+  
+  // Check if a clean room connects directly to a private room (bad architecture)
+  if (cleanRoomTypes.includes(specA.type) && privateAccessTypes.includes(specB.type)) {
+    // Exception: bedrooms CAN connect to open-plan kitchen/dining if it's a studio or explicit
+    if (specB.type !== 'bedroom') {
+      return `${specA.type} ${roomA.id} should not connect directly to ${specB.type} ${roomB.id}`;
+    }
+  }
+  if (cleanRoomTypes.includes(specB.type) && privateAccessTypes.includes(specA.type)) {
+    if (specA.type !== 'bedroom') {
+      return `${specB.type} ${roomB.id} should not connect directly to ${specA.type} ${roomA.id}`;
+    }
+  }
+
   return null; // No rule violation
 }
 

@@ -12,6 +12,7 @@ import { scoreCandidate } from '../constraints/soft.js';
 import {
   type PlacedRoom,
   type PlanState,
+  type PlacementFailure,
   type Rect,
   rectArea,
   touchesEdge,
@@ -58,6 +59,9 @@ export function placeRooms(
     openings: [],
   };
 
+  // Initialize failure reasons array
+  const failureReasons: PlacementFailure[] = [];
+
   for (const room of orderedRooms) {
     const placedRooms = Array.from(state.placed.values());
 
@@ -68,28 +72,108 @@ export function placeRooms(
     const attachedRooms = attachedRoomsMap.get(room.id);
     
     // Try preferred cells first, then all valid cells (inside footprint)
-    let candidates = generateAndScoreCandidates(room, preferredCells, frame, placedRooms, intent, attachedRooms);
+    let result = generateAndScoreCandidates(room, preferredCells, frame, placedRooms, intent, attachedRooms);
     
     const validCells = getValidCells(frame);
-    if (candidates.length === 0 && preferredCells.length < validCells.length) {
+    if (result.candidates.length === 0 && preferredCells.length < validCells.length) {
       // Fall back to all valid cells (inside footprint)
-      candidates = generateAndScoreCandidates(room, validCells, frame, placedRooms, intent, attachedRooms);
+      result = generateAndScoreCandidates(room, validCells, frame, placedRooms, intent, attachedRooms);
     }
 
     // Take top candidates
-    candidates = candidates.slice(0, maxCandidatesPerRoom);
+    const candidates = result.candidates.slice(0, maxCandidatesPerRoom);
 
     if (candidates.length > 0) {
       // Place best candidate
       const best = candidates[0];
       placeRoom(state, room, best, frame);
     } else {
-      // Room could not be placed - it stays in unplaced list
-      // Caller can check state.unplaced to see which rooms failed
+      // Room could not be placed - record why
+      const failure = analyzeFailure(room, result.rejectionSummary, preferredCells, validCells, placedRooms);
+      failureReasons.push(failure);
     }
   }
 
+  // Attach failure reasons to state if any rooms failed
+  if (failureReasons.length > 0) {
+    state.failureReasons = failureReasons;
+  }
+
   return state;
+}
+
+/**
+ * Analyze why a room couldn't be placed and return a detailed failure reason.
+ */
+function analyzeFailure(
+  room: RoomSpec,
+  rejectionSummary: CandidateGenerationResult['rejectionSummary'],
+  preferredCells: { bandId: string; depthId: string; rect: Rect; insideFootprint: boolean }[],
+  validCells: { bandId: string; depthId: string; rect: Rect; insideFootprint: boolean }[],
+  placedRooms: PlacedRoom[]
+): PlacementFailure {
+  const roomDesc = `${room.type} '${room.id}' (${room.minArea}m² min)`;
+  
+  // No cells available at all
+  if (validCells.length === 0) {
+    return {
+      roomId: room.id,
+      reason: `No valid cells in footprint for ${roomDesc}`,
+      details: 'The footprint may be too small or have an unusual shape.',
+    };
+  }
+  
+  // No candidates generated (room too big for any cell)
+  if (!rejectionSummary || rejectionSummary.totalGenerated === 0) {
+    const bands = room.preferredBands?.join(', ') || 'any';
+    const depths = room.preferredDepths?.join(', ') || 'any';
+    return {
+      roomId: room.id,
+      reason: `Could not generate any placements for ${roomDesc}`,
+      details: `Room may be too large for available space. Preferred bands: [${bands}], depths: [${depths}]. Available cells: ${validCells.length}`,
+    };
+  }
+  
+  // All candidates rejected - explain why
+  const { totalGenerated, rejectedByOverlap, rejectedByFootprint, rejectedByEdgeConstraint, rejectedByAdjacency, overlappingRooms } = rejectionSummary;
+  
+  const reasons: string[] = [];
+  
+  if (rejectedByOverlap > 0) {
+    const roomList = overlappingRooms.length > 0 ? ` (conflicting with: ${overlappingRooms.join(', ')})` : '';
+    reasons.push(`${rejectedByOverlap} blocked by overlap${roomList}`);
+  }
+  if (rejectedByFootprint > 0) {
+    reasons.push(`${rejectedByFootprint} extend outside footprint`);
+  }
+  if (rejectedByEdgeConstraint > 0) {
+    const edge = room.mustTouchEdge ? `must touch ${room.mustTouchEdge} edge` : 'must touch exterior';
+    reasons.push(`${rejectedByEdgeConstraint} don't satisfy edge constraint (${edge})`);
+  }
+  if (rejectedByAdjacency > 0) {
+    const adjTo = room.adjacentTo?.join(', ') || 'unknown';
+    reasons.push(`${rejectedByAdjacency} not adjacent to required rooms (${adjTo})`);
+  }
+  
+  return {
+    roomId: room.id,
+    reason: `All ${totalGenerated} candidate placements rejected for ${roomDesc}`,
+    details: reasons.join('; '),
+  };
+}
+
+/** Result of candidate generation including rejection analysis */
+interface CandidateGenerationResult {
+  candidates: Candidate[];
+  /** If no candidates, this explains why */
+  rejectionSummary?: {
+    totalGenerated: number;
+    rejectedByOverlap: number;
+    rejectedByFootprint: number;
+    rejectedByEdgeConstraint: number;
+    rejectedByAdjacency: number;
+    overlappingRooms: string[];
+  };
 }
 
 function generateAndScoreCandidates(
@@ -99,8 +183,20 @@ function generateAndScoreCandidates(
   placedRooms: PlacedRoom[],
   intent: LayoutIntent,
   attachedRooms?: RoomSpec[]
-): Candidate[] {
-  if (cells.length === 0) return [];
+): CandidateGenerationResult {
+  if (cells.length === 0) {
+    return { 
+      candidates: [],
+      rejectionSummary: {
+        totalGenerated: 0,
+        rejectedByOverlap: 0,
+        rejectedByFootprint: 0,
+        rejectedByEdgeConstraint: 0,
+        rejectedByAdjacency: 0,
+        overlappingRooms: [],
+      }
+    };
+  }
 
   // Build adjacency list including "siblings" - rooms that share the same adjacentTo targets
   // This ensures rooms that both want to be adjacent to "hall" also end up adjacent to each other
@@ -130,14 +226,56 @@ function generateAndScoreCandidates(
     reservedArea,
   });
 
-  // Filter by hard constraints and score
-  return allCandidates
-    .filter(c => checkCandidateHard(c.rect, room, placedRooms, frame, intent) === null)
-    .map(c => ({
-      ...c,
-      score: c.score + scoreCandidate(c.rect, room, placedRooms, frame, intent),
-    }))
-    .sort((a, b) => b.score - a.score);
+  // Track rejection reasons
+  let rejectedByOverlap = 0;
+  let rejectedByFootprint = 0;
+  let rejectedByEdgeConstraint = 0;
+  let rejectedByAdjacency = 0;
+  const overlappingRooms = new Set<string>();
+
+  // Filter by hard constraints and score, tracking rejections
+  const validCandidates: Candidate[] = [];
+  for (const c of allCandidates) {
+    const violation = checkCandidateHard(c.rect, room, placedRooms, frame, intent);
+    if (violation === null) {
+      validCandidates.push({
+        ...c,
+        score: c.score + scoreCandidate(c.rect, room, placedRooms, frame, intent),
+      });
+    } else {
+      // Track the rejection reason
+      switch (violation.type) {
+        case 'overlap':
+          rejectedByOverlap++;
+          if (violation.otherRoomId) overlappingRooms.add(violation.otherRoomId);
+          break;
+        case 'outside_footprint':
+          rejectedByFootprint++;
+          break;
+        case 'no_exterior':
+        case 'wrong_edge':
+          rejectedByEdgeConstraint++;
+          break;
+        case 'disconnected':
+          rejectedByAdjacency++;
+          break;
+      }
+    }
+  }
+
+  validCandidates.sort((a, b) => b.score - a.score);
+
+  return {
+    candidates: validCandidates,
+    rejectionSummary: validCandidates.length === 0 ? {
+      totalGenerated: allCandidates.length,
+      rejectedByOverlap,
+      rejectedByFootprint,
+      rejectedByEdgeConstraint,
+      rejectedByAdjacency,
+      overlappingRooms: Array.from(overlappingRooms),
+    } : undefined,
+  };
 }
 
 /**

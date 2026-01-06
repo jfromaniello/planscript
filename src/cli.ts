@@ -3,8 +3,9 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { compile, CompileError } from './compiler.js';
-import { solve, parseIntent, validateIntent } from './solver/index.js';
+import { solve, parseIntent, validateIntent, parseAndValidateIntent, validateIntentSchema, formatValidationResult } from './solver/index.js';
 import { formatInspectTrace } from './solver/inspect.js';
+import { getLayoutIntentJsonSchemaString } from './solver/intent/json-schema.js';
 
 const args = process.argv.slice(2);
 
@@ -20,6 +21,8 @@ if (command === 'solve') {
   runSolve(args.slice(1));
 } else if (command === 'compile') {
   runCompile(args.slice(1));
+} else if (command === 'intent-schema') {
+  runIntentSchema(args.slice(1));
 } else if (command?.endsWith('.json')) {
   // Auto-detect: JSON file means solve
   runSolve(args);
@@ -38,6 +41,7 @@ PlanScript - A DSL for defining floor plans
 Commands:
   planscript compile <input.psc> [options]   Compile PlanScript to SVG/JSON
   planscript solve <intent.json> [options]   Generate PlanScript from intent
+  planscript intent-schema [options]         Output JSON Schema for intent format
 
 Compile Options:
   --svg <output.svg>   Write SVG output to file
@@ -53,13 +57,37 @@ Solve Options:
   --inspect            Show detailed solver inspection trace
   --variants <n>       Try n variants, pick best (default: 1)
 
+Intent Schema Options:
+  --out <file.json>    Write schema to file (default: stdout)
+
 Examples:
   planscript compile house.psc --svg house.svg
   planscript solve intent.json --out house.psc
   planscript solve intent.json --out house.psc --svg house.svg
+  planscript intent-schema --out intent-schema.json
   planscript house.psc --svg house.svg  # auto-detects compile
   planscript intent.json --out plan.psc # auto-detects solve
 `);
+}
+
+function runIntentSchema(args: string[]) {
+  let outputFile: string | undefined;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--out' && args[i + 1]) {
+      outputFile = args[++i];
+    }
+  }
+
+  const schema = getLayoutIntentJsonSchemaString();
+
+  if (outputFile) {
+    writeFileSync(outputFile, schema);
+    console.log(`JSON Schema written to: ${outputFile}`);
+  } else {
+    console.log(schema);
+  }
 }
 
 /**
@@ -196,9 +224,21 @@ function runSolve(args: string[]) {
 
   try {
     const jsonSource = readFileSync(inputFile, 'utf-8');
-    const intent = parseIntent(jsonSource);
+    
+    // Parse and validate with TypeBox schema
+    let intent;
+    try {
+      intent = parseAndValidateIntent(jsonSource);
+    } catch (e) {
+      if (e instanceof Error) {
+        console.error(e.message);
+      } else {
+        console.error('Invalid intent format');
+      }
+      process.exit(1);
+    }
 
-    // Validate intent
+    // Run additional semantic validation
     const validationErrors = validateIntent(intent);
     if (validationErrors.length > 0) {
       console.error('Intent validation errors:');

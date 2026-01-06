@@ -60,6 +60,13 @@ export interface PlacedOpening {
   connectsTo?: RoomId; // for doors between rooms
 }
 
+/** Reason why a room failed to place */
+export interface PlacementFailure {
+  roomId: RoomId;
+  reason: string;
+  details?: string;
+}
+
 /** Current state of the layout being solved */
 export interface PlanState {
   footprint: Footprint;
@@ -67,6 +74,8 @@ export interface PlanState {
   unplaced: RoomId[];
   openings: PlacedOpening[];
   corridorPolygon?: Point[]; // if L-shaped or complex corridor
+  /** Detailed reasons why unplaced rooms couldn't be placed */
+  failureReasons?: PlacementFailure[];
 }
 
 /** Result of solving */

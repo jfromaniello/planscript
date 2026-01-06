@@ -195,6 +195,7 @@ Each room describes what you want, not where it goes. The solver figures out pla
 | `label` | string | No | Display name in generated plans. |
 | `minArea` | number | Yes | Minimum area in square units. |
 | `targetArea` | number | No | Preferred area (defaults to minArea × 1.1). |
+| `maxArea` | number | No | Maximum area (soft constraint, penalized if exceeded). |
 | `minWidth` | number | No | Minimum width. |
 | `minHeight` | number | No | Minimum height/depth. |
 | `maxWidth` | number | No | Maximum width. |

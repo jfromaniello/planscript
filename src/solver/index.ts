@@ -17,6 +17,26 @@ export { validateReachability, checkCirculationRequirement, isDoorAllowed } from
 export { type PlanState, type PlacedRoom, type SolveResult } from './types.js';
 export { emitPlanScript, type EmitOptions } from './emit/planscript.js';
 
+// TypeBox schema exports for validation and JSON schema generation
+export { 
+  LayoutIntentSchema,
+  RoomSpecSchema,
+  FootprintSchema,
+  RoomTypeSchema,
+  RoomCategorySchema,
+} from './intent/schema.js';
+export {
+  validateIntentSchema,
+  parseAndValidateIntent,
+  formatValidationResult,
+  type ValidationError,
+  type ValidationResult,
+} from './intent/validate.js';
+export {
+  getLayoutIntentJsonSchema,
+  getLayoutIntentJsonSchemaString,
+} from './intent/json-schema.js';
+
 import type { LayoutIntent } from './intent/types.js';
 import { normalizeIntent } from './intent/types.js';
 import type { PlanState, SolveResult, PlacedRoom } from './types.js';
@@ -238,9 +258,30 @@ export function solve(intent: LayoutIntent, options: SolveOptions = {}): SolverR
     }
 
     if (!bestState) {
+      // Build a helpful error message from failure reasons
+      // Get failure reasons from the last attempted state
+      const lastState = placeRooms(normalized, frame, options.placer);
+      const failureReasons = lastState.failureReasons || [];
+      
+      let errorMessage = 'Could not find a valid room placement';
+      const violations: string[] = [];
+      
+      if (failureReasons.length > 0) {
+        const failedRooms = failureReasons.map(f => f.roomId).join(', ');
+        errorMessage = `Could not place ${failureReasons.length} room(s): ${failedRooms}`;
+        
+        for (const failure of failureReasons) {
+          violations.push(failure.reason);
+          if (failure.details) {
+            violations.push(`  → ${failure.details}`);
+          }
+        }
+      }
+      
       return {
         success: false,
-        error: 'Could not find a valid room placement',
+        error: errorMessage,
+        violations: violations.length > 0 ? violations : undefined,
         inspectTrace: trace ?? undefined,
       };
     }
@@ -409,6 +450,7 @@ export function solve(intent: LayoutIntent, options: SolveOptions = {}): SolverR
 
 /**
  * Parse intent JSON from a string.
+ * @deprecated Use parseAndValidateIntent for proper validation
  */
 export function parseIntent(json: string): LayoutIntent {
   return JSON.parse(json) as LayoutIntent;

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/jfromaniello/planscript/main/intent-schema.json",
   "$comment": "U-shaped house with central courtyard. Entry foyer in center, kitchen and living on sides, bedrooms in back wings.",
   "units": "m",
   "footprint": {

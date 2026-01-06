@@ -1,0 +1,891 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/jfromaniello/planscript/main/intent-schema.json",
+  "title": "PlanScript Layout Intent",
+  "description": "Input format for the PlanScript floor plan solver. Defines rooms, constraints, and preferences for automatic floor plan generation.",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "units",
+    "footprint",
+    "frontEdge",
+    "defaults",
+    "rooms",
+    "hard"
+  ],
+  "properties": {
+    "units": {
+      "description": "Unit of measurement. All dimensions will be interpreted in this unit.",
+      "anyOf": [
+        {
+          "const": "m",
+          "type": "string"
+        },
+        {
+          "const": "cm",
+          "type": "string"
+        }
+      ]
+    },
+    "footprint": {
+      "description": "Building footprint - the outer boundary of the floor plan",
+      "anyOf": [
+        {
+          "description": "Rectangular footprint defined by min and max corners",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "kind",
+            "min",
+            "max"
+          ],
+          "properties": {
+            "kind": {
+              "const": "rect",
+              "type": "string"
+            },
+            "min": {
+              "description": "A 2D coordinate as [x, y]",
+              "type": "array",
+              "items": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "additionalItems": false,
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "max": {
+              "description": "A 2D coordinate as [x, y]",
+              "type": "array",
+              "items": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "additionalItems": false,
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        {
+          "description": "Polygon footprint defined by vertices (must be convex or simple)",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "kind",
+            "points"
+          ],
+          "properties": {
+            "kind": {
+              "const": "polygon",
+              "type": "string"
+            },
+            "points": {
+              "minItems": 3,
+              "type": "array",
+              "items": {
+                "description": "A 2D coordinate as [x, y]",
+                "type": "array",
+                "items": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "additionalItems": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        }
+      ]
+    },
+    "bands": {
+      "description": "Vertical bands (left-to-right divisions)",
+      "type": "array",
+      "items": {
+        "description": "Vertical band (left-to-right division) specification",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "description": "Zone identifier (e.g., \"front\", \"middle\", \"back\", \"left\", \"right\")",
+            "minLength": 1,
+            "type": "string"
+          },
+          "minWidth": {
+            "minimum": 0,
+            "description": "Minimum width of this band",
+            "type": "number"
+          },
+          "targetWidth": {
+            "minimum": 0,
+            "description": "Target width of this band",
+            "type": "number"
+          },
+          "maxWidth": {
+            "minimum": 0,
+            "description": "Maximum width of this band",
+            "type": "number"
+          }
+        }
+      }
+    },
+    "depths": {
+      "description": "Depth zones (front-to-back divisions)",
+      "type": "array",
+      "items": {
+        "description": "Horizontal depth zone (front-to-back division) specification",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "description": "Zone identifier (e.g., \"front\", \"middle\", \"back\", \"left\", \"right\")",
+            "minLength": 1,
+            "type": "string"
+          },
+          "minDepth": {
+            "minimum": 0,
+            "description": "Minimum depth of this zone",
+            "type": "number"
+          },
+          "targetDepth": {
+            "minimum": 0,
+            "description": "Target depth of this zone",
+            "type": "number"
+          },
+          "maxDepth": {
+            "minimum": 0,
+            "description": "Maximum depth of this zone",
+            "type": "number"
+          }
+        }
+      }
+    },
+    "frontEdge": {
+      "description": "Cardinal direction for edge alignment",
+      "anyOf": [
+        {
+          "const": "north",
+          "type": "string"
+        },
+        {
+          "const": "south",
+          "type": "string"
+        },
+        {
+          "const": "east",
+          "type": "string"
+        },
+        {
+          "const": "west",
+          "type": "string"
+        }
+      ]
+    },
+    "gardenEdge": {
+      "description": "Cardinal direction for edge alignment",
+      "anyOf": [
+        {
+          "const": "north",
+          "type": "string"
+        },
+        {
+          "const": "south",
+          "type": "string"
+        },
+        {
+          "const": "east",
+          "type": "string"
+        },
+        {
+          "const": "west",
+          "type": "string"
+        }
+      ]
+    },
+    "defaults": {
+      "description": "Default dimensions for doors and windows",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "doorWidth",
+        "windowWidth"
+      ],
+      "properties": {
+        "doorWidth": {
+          "exclusiveMinimum": 0,
+          "description": "Default interior door width",
+          "type": "number"
+        },
+        "windowWidth": {
+          "exclusiveMinimum": 0,
+          "description": "Default window width",
+          "type": "number"
+        },
+        "exteriorDoorWidth": {
+          "exclusiveMinimum": 0,
+          "description": "Exterior door width (defaults to doorWidth)",
+          "type": "number"
+        },
+        "corridorWidth": {
+          "exclusiveMinimum": 0,
+          "description": "Default corridor width (defaults to 1.2m)",
+          "type": "number"
+        }
+      }
+    },
+    "rooms": {
+      "minItems": 1,
+      "description": "List of rooms to place in the floor plan",
+      "type": "array",
+      "items": {
+        "description": "Specification for a single room",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "minArea"
+        ],
+        "properties": {
+          "id": {
+            "description": "Unique room identifier",
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": {
+            "description": "Type of room, used for defaults and access rules",
+            "anyOf": [
+              {
+                "const": "bedroom",
+                "type": "string"
+              },
+              {
+                "const": "bath",
+                "type": "string"
+              },
+              {
+                "const": "kitchen",
+                "type": "string"
+              },
+              {
+                "const": "dining",
+                "type": "string"
+              },
+              {
+                "const": "living",
+                "type": "string"
+              },
+              {
+                "const": "office",
+                "type": "string"
+              },
+              {
+                "const": "garage",
+                "type": "string"
+              },
+              {
+                "const": "laundry",
+                "type": "string"
+              },
+              {
+                "const": "hall",
+                "type": "string"
+              },
+              {
+                "const": "corridor",
+                "type": "string"
+              },
+              {
+                "const": "foyer",
+                "type": "string"
+              },
+              {
+                "const": "stairwell",
+                "type": "string"
+              },
+              {
+                "const": "closet",
+                "type": "string"
+              },
+              {
+                "const": "ensuite",
+                "type": "string"
+              },
+              {
+                "const": "utility",
+                "type": "string"
+              },
+              {
+                "const": "storage",
+                "type": "string"
+              },
+              {
+                "const": "other",
+                "type": "string"
+              }
+            ]
+          },
+          "label": {
+            "description": "Display label (defaults to id)",
+            "type": "string"
+          },
+          "minArea": {
+            "exclusiveMinimum": 0,
+            "description": "Minimum required area for this room",
+            "type": "number"
+          },
+          "targetArea": {
+            "exclusiveMinimum": 0,
+            "description": "Target area (solver will try to achieve)",
+            "type": "number"
+          },
+          "maxArea": {
+            "exclusiveMinimum": 0,
+            "description": "Maximum area (soft constraint, penalized if exceeded)",
+            "type": "number"
+          },
+          "minWidth": {
+            "exclusiveMinimum": 0,
+            "description": "Minimum width constraint",
+            "type": "number"
+          },
+          "minHeight": {
+            "exclusiveMinimum": 0,
+            "description": "Minimum height constraint",
+            "type": "number"
+          },
+          "maxWidth": {
+            "exclusiveMinimum": 0,
+            "description": "Maximum width constraint",
+            "type": "number"
+          },
+          "maxHeight": {
+            "exclusiveMinimum": 0,
+            "description": "Maximum height constraint",
+            "type": "number"
+          },
+          "aspect": {
+            "description": "Aspect ratio constraints (width/height)",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "min",
+              "max"
+            ],
+            "properties": {
+              "min": {
+                "minimum": 0,
+                "description": "Minimum width/height ratio",
+                "type": "number"
+              },
+              "max": {
+                "minimum": 0,
+                "description": "Maximum width/height ratio",
+                "type": "number"
+              }
+            }
+          },
+          "fillCell": {
+            "description": "If true, room will try to fill its entire cell rather than just meeting area targets",
+            "type": "boolean"
+          },
+          "preferredBands": {
+            "description": "Preferred vertical bands for this room",
+            "type": "array",
+            "items": {
+              "description": "Zone identifier (e.g., \"front\", \"middle\", \"back\", \"left\", \"right\")",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "preferredDepths": {
+            "description": "Preferred depth zones for this room",
+            "type": "array",
+            "items": {
+              "description": "Zone identifier (e.g., \"front\", \"middle\", \"back\", \"left\", \"right\")",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "mustTouchExterior": {
+            "description": "Room must have at least one exterior wall",
+            "type": "boolean"
+          },
+          "mustTouchEdge": {
+            "description": "Cardinal direction for edge alignment",
+            "anyOf": [
+              {
+                "const": "north",
+                "type": "string"
+              },
+              {
+                "const": "south",
+                "type": "string"
+              },
+              {
+                "const": "east",
+                "type": "string"
+              },
+              {
+                "const": "west",
+                "type": "string"
+              }
+            ]
+          },
+          "adjacentTo": {
+            "description": "Rooms this room should be adjacent to",
+            "type": "array",
+            "items": {
+              "description": "Unique room identifier",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "avoidAdjacentTo": {
+            "description": "Rooms this room should NOT be adjacent to",
+            "type": "array",
+            "items": {
+              "description": "Unique room identifier",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "needsAccessFrom": {
+            "description": "Rooms that must provide door access to this room",
+            "type": "array",
+            "items": {
+              "description": "Unique room identifier",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "isCirculation": {
+            "description": "Mark this room as circulation space (overrides type-based detection)",
+            "type": "boolean"
+          },
+          "hasExteriorDoor": {
+            "description": "This room has the main exterior door (entry point for reachability)",
+            "type": "boolean"
+          },
+          "isEnsuite": {
+            "description": "For bathrooms: marks as ensuite (private to one bedroom). If not specified, inferred from adjacencies.",
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "hard": {
+      "description": "Hard constraints that must be satisfied",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "noOverlap",
+        "insideFootprint"
+      ],
+      "properties": {
+        "noOverlap": {
+          "description": "Rooms must not overlap",
+          "type": "boolean"
+        },
+        "insideFootprint": {
+          "description": "All rooms must be inside the footprint",
+          "type": "boolean"
+        },
+        "allRoomsReachable": {
+          "description": "All rooms must be reachable from the entry point (defaults to true)",
+          "type": "boolean"
+        }
+      }
+    },
+    "accessRulePreset": {
+      "description": "Predefined access rule preset. open_plan: minimal restrictions. traditional: bedrooms from circulation, formal flow. privacy_focused: strict private/public separation.",
+      "anyOf": [
+        {
+          "const": "open_plan",
+          "type": "string"
+        },
+        {
+          "const": "traditional",
+          "type": "string"
+        },
+        {
+          "const": "privacy_focused",
+          "type": "string"
+        }
+      ]
+    },
+    "accessRules": {
+      "description": "Custom access rules (override/extend preset)",
+      "type": "array",
+      "items": {
+        "description": "Access rule defining door placement between room types",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roomType"
+        ],
+        "properties": {
+          "roomType": {
+            "description": "Either a specific room type or a category",
+            "anyOf": [
+              {
+                "description": "Type of room, used for defaults and access rules",
+                "anyOf": [
+                  {
+                    "const": "bedroom",
+                    "type": "string"
+                  },
+                  {
+                    "const": "bath",
+                    "type": "string"
+                  },
+                  {
+                    "const": "kitchen",
+                    "type": "string"
+                  },
+                  {
+                    "const": "dining",
+                    "type": "string"
+                  },
+                  {
+                    "const": "living",
+                    "type": "string"
+                  },
+                  {
+                    "const": "office",
+                    "type": "string"
+                  },
+                  {
+                    "const": "garage",
+                    "type": "string"
+                  },
+                  {
+                    "const": "laundry",
+                    "type": "string"
+                  },
+                  {
+                    "const": "hall",
+                    "type": "string"
+                  },
+                  {
+                    "const": "corridor",
+                    "type": "string"
+                  },
+                  {
+                    "const": "foyer",
+                    "type": "string"
+                  },
+                  {
+                    "const": "stairwell",
+                    "type": "string"
+                  },
+                  {
+                    "const": "closet",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ensuite",
+                    "type": "string"
+                  },
+                  {
+                    "const": "utility",
+                    "type": "string"
+                  },
+                  {
+                    "const": "storage",
+                    "type": "string"
+                  },
+                  {
+                    "const": "other",
+                    "type": "string"
+                  }
+                ]
+              },
+              {
+                "description": "Room category for access rules. circulation: hall, corridor, foyer, stairwell. private: bedroom, bath, closet, ensuite. public: living, dining, kitchen, office. service: laundry, garage, storage, utility.",
+                "anyOf": [
+                  {
+                    "const": "circulation",
+                    "type": "string"
+                  },
+                  {
+                    "const": "private",
+                    "type": "string"
+                  },
+                  {
+                    "const": "public",
+                    "type": "string"
+                  },
+                  {
+                    "const": "service",
+                    "type": "string"
+                  }
+                ]
+              }
+            ]
+          },
+          "accessibleFrom": {
+            "description": "Which room types/categories can have doors leading TO this room",
+            "type": "array",
+            "items": {
+              "description": "Either a specific room type or a category",
+              "anyOf": [
+                {
+                  "description": "Type of room, used for defaults and access rules",
+                  "anyOf": [
+                    {
+                      "const": "bedroom",
+                      "type": "string"
+                    },
+                    {
+                      "const": "bath",
+                      "type": "string"
+                    },
+                    {
+                      "const": "kitchen",
+                      "type": "string"
+                    },
+                    {
+                      "const": "dining",
+                      "type": "string"
+                    },
+                    {
+                      "const": "living",
+                      "type": "string"
+                    },
+                    {
+                      "const": "office",
+                      "type": "string"
+                    },
+                    {
+                      "const": "garage",
+                      "type": "string"
+                    },
+                    {
+                      "const": "laundry",
+                      "type": "string"
+                    },
+                    {
+                      "const": "hall",
+                      "type": "string"
+                    },
+                    {
+                      "const": "corridor",
+                      "type": "string"
+                    },
+                    {
+                      "const": "foyer",
+                      "type": "string"
+                    },
+                    {
+                      "const": "stairwell",
+                      "type": "string"
+                    },
+                    {
+                      "const": "closet",
+                      "type": "string"
+                    },
+                    {
+                      "const": "ensuite",
+                      "type": "string"
+                    },
+                    {
+                      "const": "utility",
+                      "type": "string"
+                    },
+                    {
+                      "const": "storage",
+                      "type": "string"
+                    },
+                    {
+                      "const": "other",
+                      "type": "string"
+                    }
+                  ]
+                },
+                {
+                  "description": "Room category for access rules. circulation: hall, corridor, foyer, stairwell. private: bedroom, bath, closet, ensuite. public: living, dining, kitchen, office. service: laundry, garage, storage, utility.",
+                  "anyOf": [
+                    {
+                      "const": "circulation",
+                      "type": "string"
+                    },
+                    {
+                      "const": "private",
+                      "type": "string"
+                    },
+                    {
+                      "const": "public",
+                      "type": "string"
+                    },
+                    {
+                      "const": "service",
+                      "type": "string"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "canLeadTo": {
+            "description": "Which room types/categories this room can have doors leading TO",
+            "type": "array",
+            "items": {
+              "description": "Either a specific room type or a category",
+              "anyOf": [
+                {
+                  "description": "Type of room, used for defaults and access rules",
+                  "anyOf": [
+                    {
+                      "const": "bedroom",
+                      "type": "string"
+                    },
+                    {
+                      "const": "bath",
+                      "type": "string"
+                    },
+                    {
+                      "const": "kitchen",
+                      "type": "string"
+                    },
+                    {
+                      "const": "dining",
+                      "type": "string"
+                    },
+                    {
+                      "const": "living",
+                      "type": "string"
+                    },
+                    {
+                      "const": "office",
+                      "type": "string"
+                    },
+                    {
+                      "const": "garage",
+                      "type": "string"
+                    },
+                    {
+                      "const": "laundry",
+                      "type": "string"
+                    },
+                    {
+                      "const": "hall",
+                      "type": "string"
+                    },
+                    {
+                      "const": "corridor",
+                      "type": "string"
+                    },
+                    {
+                      "const": "foyer",
+                      "type": "string"
+                    },
+                    {
+                      "const": "stairwell",
+                      "type": "string"
+                    },
+                    {
+                      "const": "closet",
+                      "type": "string"
+                    },
+                    {
+                      "const": "ensuite",
+                      "type": "string"
+                    },
+                    {
+                      "const": "utility",
+                      "type": "string"
+                    },
+                    {
+                      "const": "storage",
+                      "type": "string"
+                    },
+                    {
+                      "const": "other",
+                      "type": "string"
+                    }
+                  ]
+                },
+                {
+                  "description": "Room category for access rules. circulation: hall, corridor, foyer, stairwell. private: bedroom, bath, closet, ensuite. public: living, dining, kitchen, office. service: laundry, garage, storage, utility.",
+                  "anyOf": [
+                    {
+                      "const": "circulation",
+                      "type": "string"
+                    },
+                    {
+                      "const": "private",
+                      "type": "string"
+                    },
+                    {
+                      "const": "public",
+                      "type": "string"
+                    },
+                    {
+                      "const": "service",
+                      "type": "string"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "weights": {
+      "type": "object",
+      "properties": {
+        "respectPreferredZones": {
+          "description": "Weight for respecting preferred zones",
+          "type": "number"
+        },
+        "adjacencySatisfaction": {
+          "description": "Weight for satisfying adjacency requirements",
+          "type": "number"
+        },
+        "minimizeHallArea": {
+          "description": "Weight for minimizing hallway area",
+          "type": "number"
+        },
+        "maximizeExteriorGlazing": {
+          "description": "Weight for maximizing exterior windows",
+          "type": "number"
+        },
+        "bathroomClustering": {
+          "description": "Weight for clustering bathrooms together",
+          "type": "number"
+        },
+        "compactness": {
+          "description": "Weight for compact room shapes",
+          "type": "number"
+        },
+        "minimizeExteriorWallBreaks": {
+          "description": "Weight for minimizing exterior wall breaks",
+          "type": "number"
+        }
+      },
+      "description": "Soft constraint weights (all optional, have defaults)"
+    }
+  }
+}

@@ -11,6 +11,7 @@ import {
   validateReachability,
   isDoorAllowed,
 } from '../../src/solver/access/index.js';
+import { checkArchitecturalRules } from '../../src/solver/access/rules.js';
 import { normalizeIntent, getAccessRulePreset } from '../../src/solver/intent/types.js';
 import {
   createIntent,
@@ -484,6 +485,159 @@ describe('access', () => {
       const bedroomRule = rules.find(r => r.roomType === 'bedroom');
       expect(bedroomRule).toBeDefined();
       expect(bedroomRule!.accessibleFrom).toContain('circulation');
+    });
+  });
+
+  describe('checkArchitecturalRules', () => {
+    it('blocks kitchen connecting directly to bathroom', () => {
+      const intent = normalizeIntent(createIntent(
+        [
+          { id: 'kitchen', type: 'kitchen', minArea: 12 },
+          { id: 'bath', type: 'bath', minArea: 6 },
+        ],
+        { footprint: { kind: 'rect', min: [0, 0], max: [10, 8] } }
+      ));
+
+      const kitchen = createPlacedRoom('kitchen', rect(0, 0, 5, 4), 'kitchen');
+      const bath = createPlacedRoom('bath', rect(5, 0, 8, 4), 'bath');
+      const roomSpecs = new Map(intent.rooms.map(r => [r.id, r]));
+
+      const violation = checkArchitecturalRules(kitchen, bath, intent, roomSpecs);
+      expect(violation).not.toBeNull();
+      expect(violation).toContain('kitchen');
+      expect(violation).toContain('bath');
+    });
+
+    it('blocks dining connecting directly to bathroom', () => {
+      const intent = normalizeIntent(createIntent(
+        [
+          { id: 'dining', type: 'dining', minArea: 12 },
+          { id: 'bath', type: 'bath', minArea: 6 },
+        ],
+        { footprint: { kind: 'rect', min: [0, 0], max: [10, 8] } }
+      ));
+
+      const dining = createPlacedRoom('dining', rect(0, 0, 5, 4), 'dining');
+      const bath = createPlacedRoom('bath', rect(5, 0, 8, 4), 'bath');
+      const roomSpecs = new Map(intent.rooms.map(r => [r.id, r]));
+
+      const violation = checkArchitecturalRules(dining, bath, intent, roomSpecs);
+      expect(violation).not.toBeNull();
+      expect(violation).toContain('dining');
+      expect(violation).toContain('bath');
+    });
+
+    it('blocks kitchen connecting directly to closet', () => {
+      const intent = normalizeIntent(createIntent(
+        [
+          { id: 'kitchen', type: 'kitchen', minArea: 12 },
+          { id: 'closet1', type: 'closet', minArea: 3 },
+        ],
+        { footprint: { kind: 'rect', min: [0, 0], max: [10, 8] } }
+      ));
+
+      const kitchen = createPlacedRoom('kitchen', rect(0, 0, 5, 4), 'kitchen');
+      const closet = createPlacedRoom('closet1', rect(5, 0, 7, 3), 'closet');
+      const roomSpecs = new Map(intent.rooms.map(r => [r.id, r]));
+
+      const violation = checkArchitecturalRules(kitchen, closet, intent, roomSpecs);
+      expect(violation).not.toBeNull();
+      expect(violation).toContain('kitchen');
+      expect(violation).toContain('closet');
+    });
+
+    it('allows kitchen connecting to living room', () => {
+      const intent = normalizeIntent(createIntent(
+        [
+          { id: 'kitchen', type: 'kitchen', minArea: 12 },
+          { id: 'living', type: 'living', minArea: 20 },
+        ],
+        { footprint: { kind: 'rect', min: [0, 0], max: [12, 8] } }
+      ));
+
+      const kitchen = createPlacedRoom('kitchen', rect(0, 0, 5, 4), 'kitchen');
+      const living = createPlacedRoom('living', rect(5, 0, 12, 5), 'living');
+      const roomSpecs = new Map(intent.rooms.map(r => [r.id, r]));
+
+      const violation = checkArchitecturalRules(kitchen, living, intent, roomSpecs);
+      expect(violation).toBeNull();
+    });
+
+    it('allows kitchen connecting to circulation (hall)', () => {
+      const intent = normalizeIntent(createIntent(
+        [
+          { id: 'kitchen', type: 'kitchen', minArea: 12 },
+          { id: 'hall', type: 'hall', minArea: 8, isCirculation: true },
+        ],
+        { footprint: { kind: 'rect', min: [0, 0], max: [10, 8] } }
+      ));
+
+      const kitchen = createPlacedRoom('kitchen', rect(0, 0, 5, 4), 'kitchen');
+      const hall = createPlacedRoom('hall', rect(5, 0, 8, 4), 'hall');
+      const roomSpecs = new Map(intent.rooms.map(r => [r.id, r]));
+
+      const violation = checkArchitecturalRules(kitchen, hall, intent, roomSpecs);
+      expect(violation).toBeNull();
+    });
+
+    it('allows bedroom connecting to kitchen (open plan exception)', () => {
+      // Bedrooms can connect to kitchen/dining in studio or open-plan layouts
+      const intent = normalizeIntent(createIntent(
+        [
+          { id: 'kitchen', type: 'kitchen', minArea: 12 },
+          { id: 'bedroom', type: 'bedroom', minArea: 15 },
+        ],
+        { footprint: { kind: 'rect', min: [0, 0], max: [12, 8] } }
+      ));
+
+      const kitchen = createPlacedRoom('kitchen', rect(0, 0, 5, 4), 'kitchen');
+      const bedroom = createPlacedRoom('bedroom', rect(5, 0, 10, 5), 'bedroom');
+      const roomSpecs = new Map(intent.rooms.map(r => [r.id, r]));
+
+      // This specific rule doesn't block kitchen-bedroom (other rules might)
+      const violation = checkArchitecturalRules(kitchen, bedroom, intent, roomSpecs);
+      // The kitchen-bedroom connection is allowed by the "clean room" rule
+      // (bedroom is exception), but may be blocked by other rules
+      // For this test, we just verify the clean room rule doesn't block it
+      expect(violation === null || !violation.includes('should not connect directly')).toBe(true);
+    });
+
+    it('blocks shared bathroom connecting to non-circulation', () => {
+      // Shared bathrooms should only be accessible from circulation
+      const intent = normalizeIntent(createIntent(
+        [
+          { id: 'bath', type: 'bath', minArea: 6 },
+          { id: 'living', type: 'living', minArea: 20 },
+        ],
+        { footprint: { kind: 'rect', min: [0, 0], max: [12, 8] } }
+      ));
+
+      const bath = createPlacedRoom('bath', rect(0, 0, 4, 4), 'bath');
+      const living = createPlacedRoom('living', rect(4, 0, 12, 5), 'living');
+      const roomSpecs = new Map(intent.rooms.map(r => [r.id, r]));
+
+      const violation = checkArchitecturalRules(bath, living, intent, roomSpecs);
+      expect(violation).not.toBeNull();
+      expect(violation).toContain('Shared bathroom');
+      expect(violation).toContain('circulation');
+    });
+
+    it('blocks pass-through bedrooms', () => {
+      const intent = normalizeIntent(createIntent(
+        [
+          { id: 'bedroom1', type: 'bedroom', minArea: 15 },
+          { id: 'bedroom2', type: 'bedroom', minArea: 15 },
+        ],
+        { footprint: { kind: 'rect', min: [0, 0], max: [10, 10] } }
+      ));
+
+      const bedroom1 = createPlacedRoom('bedroom1', rect(0, 0, 5, 5), 'bedroom');
+      const bedroom2 = createPlacedRoom('bedroom2', rect(5, 0, 10, 5), 'bedroom');
+      const roomSpecs = new Map(intent.rooms.map(r => [r.id, r]));
+
+      const violation = checkArchitecturalRules(bedroom1, bedroom2, intent, roomSpecs);
+      expect(violation).not.toBeNull();
+      expect(violation).toContain('pass-through');
     });
   });
 });

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/jfromaniello/planscript/main/intent-schema.json",
   "units": "m",
   "footprint": { "kind": "rect", "min": [0, 0], "max": [16, 12] },
   "frontEdge": "south",

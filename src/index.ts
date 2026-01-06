@@ -24,3 +24,22 @@ export { exportJSON, JSONExportOptions, JSONExportResult } from './exporters/jso
 
 // Compiler (full pipeline)
 export { compile, CompileResult, CompileError, CompileOptions } from './compiler.js';
+
+// Solver (intent to PlanScript)
+export { 
+  solve, 
+  parseIntent, 
+  validateIntent,
+  parseAndValidateIntent,
+  validateIntentSchema,
+  formatValidationResult,
+  getLayoutIntentJsonSchema,
+  getLayoutIntentJsonSchemaString,
+  LayoutIntentSchema,
+  type LayoutIntent,
+  type RoomSpec,
+  type ValidationResult,
+  type ValidationError as IntentValidationError,
+  type SolverResult,
+  type SolveOptions,
+} from './solver/index.js';
