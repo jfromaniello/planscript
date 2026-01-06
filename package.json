@@ -28,6 +28,10 @@
     "dev": "npm run build:grammar && tsc --watch",
     "test": "npm run build:grammar && vitest run",
     "test:watch": "npm run build:grammar && vitest",
+    "test:update-snapshots": "npm run build:grammar && vitest run -u",
+    "examples:intent": "npm run build && ./scripts/build-examples-intent.sh",
+    "examples:psc": "npm run build && ./scripts/build-examples-psc.sh",
+    "examples": "npm run examples:intent && npm run examples:psc",
     "prepare": "npm run build"
   },
   "keywords": [

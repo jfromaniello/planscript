@@ -1,0 +1,97 @@
+{
+  "units": "m",
+  "footprint": { "kind": "rect", "min": [0, 0], "max": [18, 12] },
+  "frontEdge": "south",
+  "gardenEdge": "north",
+  "defaults": {
+    "doorWidth": 0.9,
+    "windowWidth": 1.5,
+    "exteriorDoorWidth": 1.0,
+    "corridorWidth": 1.2
+  },
+  "bands": [
+    { "id": "private", "targetWidth": 5 },
+    { "id": "circulation", "targetWidth": 1.5 },
+    { "id": "public", "targetWidth": 11.5 }
+  ],
+  "rooms": [
+    {
+      "id": "hall",
+      "type": "hall",
+      "label": "Hallway",
+      "minArea": 14,
+      "targetArea": 18,
+      "minWidth": 1.2,
+      "preferredBands": ["circulation"],
+      "mustTouchEdge": "south",
+      "hasExteriorDoor": true,
+      "isCirculation": true
+    },
+    {
+      "id": "living",
+      "type": "living",
+      "label": "Living Room",
+      "minArea": 30,
+      "targetArea": 40,
+      "preferredBands": ["public"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "north",
+      "adjacentTo": ["hall", "kitchen"]
+    },
+    {
+      "id": "kitchen",
+      "type": "kitchen",
+      "label": "Kitchen",
+      "minArea": 14,
+      "targetArea": 18,
+      "preferredBands": ["public"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "south",
+      "adjacentTo": ["hall", "living"]
+    },
+    {
+      "id": "master",
+      "type": "bedroom",
+      "label": "Master Bedroom",
+      "minArea": 14,
+      "targetArea": 16,
+      "preferredBands": ["private"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "north",
+      "adjacentTo": ["hall"]
+    },
+    {
+      "id": "bedroom2",
+      "type": "bedroom",
+      "label": "Bedroom 2",
+      "minArea": 12,
+      "targetArea": 14,
+      "preferredBands": ["private"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "south",
+      "adjacentTo": ["hall"]
+    },
+    {
+      "id": "bath",
+      "type": "bath",
+      "label": "Bathroom",
+      "minArea": 5,
+      "targetArea": 6,
+      "preferredBands": ["private"],
+      "adjacentTo": ["hall"]
+    }
+  ],
+  "hard": {
+    "noOverlap": true,
+    "insideFootprint": true,
+    "allRoomsReachable": true
+  },
+  "accessRulePreset": "traditional",
+  "weights": {
+    "adjacencySatisfaction": 5,
+    "respectPreferredZones": 3,
+    "maximizeExteriorGlazing": 2,
+    "minimizeHallArea": 1,
+    "bathroomClustering": 1
+  }
+}

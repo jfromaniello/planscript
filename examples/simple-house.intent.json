@@ -1,0 +1,92 @@
+{
+  "units": "m",
+  "footprint": { "kind": "rect", "min": [0, 0], "max": [14, 10] },
+  "frontEdge": "south",
+  "gardenEdge": "north",
+  "defaults": {
+    "doorWidth": 0.9,
+    "windowWidth": 1.5,
+    "exteriorDoorWidth": 1.0
+  },
+  "bands": [
+    { "id": "private", "targetWidth": 5 },
+    { "id": "circulation", "targetWidth": 2 },
+    { "id": "public", "targetWidth": 7 }
+  ],
+  "rooms": [
+    {
+      "id": "hall",
+      "type": "hall",
+      "label": "Hallway",
+      "minArea": 16,
+      "targetArea": 20,
+      "minWidth": 1.8,
+      "minHeight": 8,
+      "preferredBands": ["circulation"],
+      "mustTouchEdge": "south",
+      "hasExteriorDoor": true,
+      "isCirculation": true
+    },
+    {
+      "id": "living",
+      "type": "living",
+      "label": "Living Room",
+      "minArea": 18,
+      "targetArea": 22,
+      "preferredBands": ["public"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "north",
+      "adjacentTo": ["hall"]
+    },
+    {
+      "id": "kitchen",
+      "type": "kitchen",
+      "label": "Kitchen",
+      "minArea": 10,
+      "targetArea": 12,
+      "preferredBands": ["public"],
+      "adjacentTo": ["living", "hall"],
+      "mustTouchExterior": true
+    },
+    {
+      "id": "master",
+      "type": "bedroom",
+      "label": "Master Bedroom",
+      "minArea": 12,
+      "targetArea": 14,
+      "preferredBands": ["private"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "north",
+      "adjacentTo": ["hall"]
+    },
+    {
+      "id": "bedroom2",
+      "type": "bedroom",
+      "label": "Bedroom 2",
+      "minArea": 10,
+      "targetArea": 12,
+      "preferredBands": ["private"],
+      "mustTouchExterior": true,
+      "adjacentTo": ["hall"]
+    },
+    {
+      "id": "bath",
+      "type": "bath",
+      "label": "Bathroom",
+      "minArea": 4,
+      "targetArea": 5,
+      "adjacentTo": ["hall"]
+    }
+  ],
+  "hard": {
+    "noOverlap": true,
+    "insideFootprint": true,
+    "allRoomsReachable": true
+  },
+  "accessRulePreset": "traditional",
+  "weights": {
+    "adjacencySatisfaction": 5,
+    "respectPreferredZones": 3,
+    "maximizeExteriorGlazing": 2
+  }
+}

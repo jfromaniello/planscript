@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parse, tryParse } from './index.js';
+import { parse, tryParse } from '../../src/parser/index.js';
 
 describe('Parser', () => {
   describe('Basic Program Structure', () => {

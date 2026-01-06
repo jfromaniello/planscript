@@ -19,6 +19,9 @@
     <path d="M 296.00 536.00 L 377.60 536.00 L 377.60 445.33 L 296.00 445.33 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" />
     <path d="M 377.60 495.20 L 436.53 495.20 L 436.53 445.33 L 377.60 445.33 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" />
   
+  <!-- Courtyards -->
+  
+  
   <!-- Walls -->
   <line x1="477.33" y1="717.33" x2="477.33" y2="581.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
     <line x1="296.00" y1="581.33" x2="477.33" y2="581.33" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
@@ -53,5 +56,8 @@
     <text x="407.07" y="470.27" font-size="10" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">Bathroom</text>
   
   <!-- Dimensions -->
+  
+  
+  <!-- Compass / Orientation -->
   
 </svg>

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { parse } from '../parser/index.js';
-import { lower } from '../lowering/index.js';
-import { generateGeometry } from '../geometry/index.js';
-import { exportSVG } from './svg.js';
-import { exportJSON } from './json.js';
+import { parse } from '../../src/parser/index.js';
+import { lower } from '../../src/lowering/index.js';
+import { generateGeometry } from '../../src/geometry/index.js';
+import { exportSVG } from '../../src/exporters/svg.js';
+import { exportJSON } from '../../src/exporters/json.js';
 
 describe('SVG Exporter', () => {
   function compileToGeometry(source: string) {

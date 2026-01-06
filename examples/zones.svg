@@ -23,6 +23,9 @@
     <path d="M 469.09 430.91 L 592.73 430.91 L 592.73 276.36 L 469.09 276.36 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" />
     <path d="M 592.73 430.91 L 716.36 430.91 L 716.36 276.36 L 592.73 276.36 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" />
   
+  <!-- Courtyards -->
+  
+  
   <!-- Walls -->
   <line x1="345.45" y1="740.00" x2="345.45" y2="616.36" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
     <line x1="190.91" y1="616.36" x2="345.45" y2="616.36" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
@@ -85,5 +88,8 @@
     <text x="654.55" y="353.64" font-size="14" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">Bedroom 3</text>
   
   <!-- Dimensions -->
+  
+  
+  <!-- Compass / Orientation -->
   
 </svg>

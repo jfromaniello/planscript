@@ -1,0 +1,115 @@
+{
+  "units": "m",
+  "footprint": { "kind": "rect", "min": [0, 0], "max": [16, 12] },
+  "frontEdge": "south",
+  "gardenEdge": "north",
+  "defaults": {
+    "doorWidth": 0.9,
+    "windowWidth": 1.5,
+    "exteriorDoorWidth": 1.1
+  },
+  "bands": [
+    { "id": "private", "targetWidth": 5 },
+    { "id": "circulation", "targetWidth": 2.5 },
+    { "id": "public", "targetWidth": 8.5 }
+  ],
+  "rooms": [
+    {
+      "id": "hall",
+      "type": "hall",
+      "label": "Hallway",
+      "minArea": 20,
+      "targetArea": 24,
+      "minWidth": 2,
+      "preferredBands": ["circulation"],
+      "mustTouchEdge": "south",
+      "hasExteriorDoor": true,
+      "isCirculation": true
+    },
+    {
+      "id": "garage",
+      "type": "garage",
+      "label": "Garage",
+      "minArea": 25,
+      "targetArea": 30,
+      "preferredBands": ["public"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "south",
+      "adjacentTo": ["hall"]
+    },
+    {
+      "id": "living",
+      "type": "living",
+      "label": "Living Room",
+      "minArea": 20,
+      "targetArea": 25,
+      "preferredBands": ["public"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "north",
+      "adjacentTo": ["hall", "kitchen"]
+    },
+    {
+      "id": "kitchen",
+      "type": "kitchen",
+      "label": "Kitchen",
+      "minArea": 10,
+      "targetArea": 12,
+      "preferredBands": ["public"],
+      "mustTouchExterior": true,
+      "adjacentTo": ["garage", "living"]
+    },
+    {
+      "id": "master",
+      "type": "bedroom",
+      "label": "Master Bedroom",
+      "minArea": 12,
+      "targetArea": 14,
+      "preferredBands": ["private"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "north",
+      "adjacentTo": ["hall"]
+    },
+    {
+      "id": "ensuite",
+      "type": "bath",
+      "label": "Ensuite",
+      "minArea": 4,
+      "targetArea": 5,
+      "preferredBands": ["private"],
+      "adjacentTo": ["master"],
+      "isEnsuite": true
+    },
+    {
+      "id": "bedroom2",
+      "type": "bedroom",
+      "label": "Bedroom 2",
+      "minArea": 10,
+      "targetArea": 12,
+      "preferredBands": ["private"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "south",
+      "adjacentTo": ["hall"]
+    },
+    {
+      "id": "bath",
+      "type": "bath",
+      "label": "Bathroom",
+      "minArea": 4,
+      "targetArea": 5,
+      "preferredBands": ["private"],
+      "adjacentTo": ["hall"]
+    }
+  ],
+  "hard": {
+    "noOverlap": true,
+    "insideFootprint": true,
+    "allRoomsReachable": true
+  },
+  "accessRulePreset": "traditional",
+  "weights": {
+    "respectPreferredZones": 2,
+    "adjacencySatisfaction": 5,
+    "maximizeExteriorGlazing": 2,
+    "bathroomClustering": 1
+  }
+}

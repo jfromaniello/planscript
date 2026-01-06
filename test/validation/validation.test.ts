@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { parse } from '../parser/index.js';
-import { lower } from '../lowering/index.js';
-import { generateGeometry } from '../geometry/index.js';
-import { validate, ErrorCodes } from './index.js';
+import { parse } from '../../src/parser/index.js';
+import { lower } from '../../src/lowering/index.js';
+import { generateGeometry } from '../../src/geometry/index.js';
+import { validate, ErrorCodes } from '../../src/validation/index.js';
 
 describe('Validation', () => {
   function compileAndValidate(source: string) {

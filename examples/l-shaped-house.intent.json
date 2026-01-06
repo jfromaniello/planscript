@@ -1,0 +1,107 @@
+{
+  "$comment": "L-shaped house with public wing (west) and private master suite (east wing). The living room spans across the corner connecting both wings.",
+  "units": "m",
+  "footprint": {
+    "kind": "polygon",
+    "points": [
+      [0, 0],
+      [10, 0],
+      [10, 5],
+      [16, 5],
+      [16, 12],
+      [0, 12]
+    ]
+  },
+  "frontEdge": "south",
+  "gardenEdge": "north",
+  "defaults": {
+    "doorWidth": 0.9,
+    "windowWidth": 1.5,
+    "exteriorDoorWidth": 1.0
+  },
+  "bands": [
+    { "id": "west", "targetWidth": 10 },
+    { "id": "east", "targetWidth": 6 }
+  ],
+  "depths": [
+    { "id": "front", "targetDepth": 5 },
+    { "id": "back", "targetDepth": 7 }
+  ],
+  "rooms": [
+    {
+      "id": "entry",
+      "type": "foyer",
+      "label": "Entry",
+      "minArea": 6,
+      "targetArea": 8,
+      "preferredBands": ["west"],
+      "preferredDepths": ["front"],
+      "mustTouchEdge": "south",
+      "hasExteriorDoor": true,
+      "isCirculation": true
+    },
+    {
+      "id": "kitchen",
+      "type": "kitchen",
+      "label": "Kitchen",
+      "minArea": 12,
+      "targetArea": 16,
+      "preferredBands": ["west"],
+      "preferredDepths": ["front"],
+      "mustTouchExterior": true,
+      "adjacentTo": ["entry", "living"]
+    },
+    {
+      "id": "living",
+      "type": "living",
+      "label": "Living Room",
+      "minArea": 25,
+      "targetArea": 35,
+      "preferredBands": ["west"],
+      "preferredDepths": ["back"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "north",
+      "adjacentTo": ["entry", "kitchen", "master"]
+    },
+    {
+      "id": "master",
+      "type": "bedroom",
+      "label": "Master Bedroom",
+      "minArea": 14,
+      "targetArea": 18,
+      "preferredBands": ["east"],
+      "preferredDepths": ["back"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "east",
+      "adjacentTo": ["living"]
+    },
+    {
+      "id": "ensuite",
+      "type": "ensuite",
+      "label": "Ensuite",
+      "minArea": 4,
+      "targetArea": 5,
+      "preferredBands": ["east"],
+      "preferredDepths": ["back"],
+      "adjacentTo": ["master"],
+      "isEnsuite": true
+    }
+  ],
+  "hard": {
+    "noOverlap": true,
+    "insideFootprint": true,
+    "allRoomsReachable": true
+  },
+  "accessRulePreset": "open_plan",
+  "accessRules": [
+    {
+      "roomType": "bedroom",
+      "accessibleFrom": ["circulation", "living"]
+    }
+  ],
+  "weights": {
+    "adjacencySatisfaction": 5,
+    "respectPreferredZones": 2,
+    "maximizeExteriorGlazing": 2
+  }
+}

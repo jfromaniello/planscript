@@ -1,0 +1,395 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PlanScript generation snapshots > basicHouseIntent > generates expected PlanScript 1`] = `
+"units m
+
+defaults {
+  door_width 0.9
+  window_width 1.5
+}
+
+plan "Generated Plan" {
+  footprint rect (0, 0) (12, 10)
+
+  # circulation/full
+  room hall {
+    rect (4, 0) (6, 10)
+  }
+
+  # public/full
+  room living {
+    rect (6, 0) (12, 10)
+  }
+
+  # private/full
+  room bedroom {
+    rect (0, 0) (4, 10)
+  }
+
+  # Openings
+  opening door d1 {
+    between hall and living
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d2 {
+    between hall and bedroom
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d3 {
+    on hall.edge south
+    at 50%
+    width 1.1
+  }
+  opening window w4 {
+    on living.edge east
+    at 50%
+    width 1.5
+  }
+  opening window w5 {
+    on bedroom.edge west
+    at 50%
+    width 1.5
+  }
+
+  # Validation
+  assert no_overlap rooms
+  assert inside footprint all_rooms
+}"
+`;
+
+exports[`PlanScript generation snapshots > ensuiteLayoutIntent > generates expected PlanScript 1`] = `
+"units m
+
+defaults {
+  door_width 0.9
+  window_width 1.5
+}
+
+plan "Generated Plan" {
+  footprint rect (0, 0) (14, 10)
+
+  # circulation/full
+  room hall {
+    rect (5, 0) (7, 10)
+  }
+
+  # public/full
+  room living {
+    rect (7, 0) (14, 10)
+  }
+
+  # private/full
+  room master {
+    rect (0, 0) (5, 4.65)
+  }
+  room ensuite {
+    rect (0, 4.65) (5, 10)
+  }
+
+  # Openings
+  opening door d1 {
+    between hall and living
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d2 {
+    between hall and master
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d3 {
+    between ensuite and master
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d4 {
+    on hall.edge south
+    at 50%
+    width 1.1
+  }
+  opening window w5 {
+    on living.edge east
+    at 50%
+    width 1.5
+  }
+  opening window w6 {
+    on master.edge south
+    at 50%
+    width 1.5
+  }
+  opening window w7 {
+    on ensuite.edge west
+    at 50%
+    width 0.75
+  }
+
+  # Validation
+  assert no_overlap rooms
+  assert inside footprint all_rooms
+}"
+`;
+
+exports[`PlanScript generation snapshots > familyHouseIntent > generates expected PlanScript 1`] = `
+"units m
+
+defaults {
+  door_width 0.9
+  window_width 1.5
+}
+
+plan "Generated Plan" {
+  footprint rect (0, 0) (16, 12)
+
+  # circulation/full
+  room hall {
+    rect (5, 0) (7.5, 12)
+    label "Hallway"
+  }
+
+  # public/full
+  room garage {
+    rect (7.5, 0) (12.1, 6.25)
+    label "Garage"
+  }
+  room living {
+    rect (7.5, 6.25) (16, 12)
+    label "Living Room"
+  }
+  room kitchen {
+    rect (12.1, 0) (16, 6.25)
+    label "Kitchen"
+  }
+
+  # private/full
+  room master {
+    rect (0, 7.7) (5, 12)
+    label "Master Bedroom"
+  }
+  room ensuite {
+    rect (0, 5.6) (5, 7.7)
+    label "Ensuite"
+  }
+  room bedroom2 {
+    rect (0, 0) (5, 3)
+    label "Bedroom 2"
+  }
+  room bath {
+    rect (0, 3) (5, 5.6)
+    label "Bathroom"
+  }
+
+  # Openings
+  opening door d1 {
+    between hall and garage
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d2 {
+    between hall and living
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d3 {
+    between hall and master
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d4 {
+    between hall and bedroom2
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d5 {
+    between garage and kitchen
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d6 {
+    between living and kitchen
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d7 {
+    between ensuite and master
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d8 {
+    between bath and hall
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d9 {
+    on hall.edge south
+    at 50%
+    width 1.1
+  }
+  opening window w10 {
+    on living.edge north
+    at 50%
+    width 2.25
+  }
+  opening window w11 {
+    on master.edge north
+    at 50%
+    width 1.5
+  }
+  opening window w12 {
+    on ensuite.edge west
+    at 50%
+    width 0.75
+  }
+  opening window w13 {
+    on bedroom2.edge south
+    at 50%
+    width 1.5
+  }
+  opening window w14 {
+    on bath.edge west
+    at 50%
+    width 0.75
+  }
+
+  # Validation
+  assert no_overlap rooms
+  assert inside footprint all_rooms
+}"
+`;
+
+exports[`PlanScript generation snapshots > tightPrivateBandIntent > generates expected PlanScript 1`] = `
+"units m
+
+defaults {
+  door_width 0.9
+  window_width 1.5
+}
+
+plan "Generated Plan" {
+  footprint rect (0, 0) (12, 10)
+
+  # circulation/full
+  room hall {
+    rect (4, 0) (12, 10)
+  }
+
+  # private/full
+  room bedroom1 {
+    rect (0, 5.8) (4, 10)
+  }
+  room bedroom2 {
+    rect (0, 0) (4, 4)
+  }
+  room bath {
+    rect (0, 4) (4, 5.8)
+  }
+
+  # Openings
+  opening door d1 {
+    between hall and bedroom1
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d2 {
+    between hall and bedroom2
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d3 {
+    between bath and hall
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d4 {
+    on hall.edge south
+    at 50%
+    width 1.1
+  }
+  opening window w5 {
+    on bedroom1.edge west
+    at 50%
+    width 1.5
+  }
+  opening window w6 {
+    on bedroom2.edge south
+    at 50%
+    width 1.5
+  }
+  opening window w7 {
+    on bath.edge west
+    at 50%
+    width 0.75
+  }
+
+  # Validation
+  assert no_overlap rooms
+  assert inside footprint all_rooms
+}"
+`;
+
+exports[`PlanScript generation snapshots > twoRoomIntent > generates expected PlanScript 1`] = `
+"units m
+
+defaults {
+  door_width 0.9
+  window_width 1.5
+}
+
+plan "Generated Plan" {
+  footprint rect (0, 0) (12, 8)
+
+  # left/full
+  room living {
+    rect (0, 0) (6, 8)
+  }
+
+  # right/full
+  room bedroom {
+    rect (6, 0) (12, 8)
+  }
+
+  # Openings
+  opening door d1 {
+    between living and bedroom
+    on shared_edge
+    at 50%
+    width 0.9
+  }
+  opening door d2 {
+    on living.edge south
+    at 50%
+    width 1.1
+  }
+  opening window w3 {
+    on living.edge west
+    at 50%
+    width 1.5
+  }
+  opening window w4 {
+    on bedroom.edge east
+    at 50%
+    width 1.5
+  }
+
+  # Validation
+  assert no_overlap rooms
+  assert inside footprint all_rooms
+}"
+`;

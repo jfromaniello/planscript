@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compile } from './compiler.js';
+import { compile } from '../src/compiler.js';
 
 describe('Compiler', () => {
   describe('Successful Compilation', () => {

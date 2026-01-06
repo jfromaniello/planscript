@@ -85,4 +85,17 @@
   
   <!-- Dimensions -->
   
+  
+  <!-- Compass / Orientation -->
+  <g class="compass">
+    <circle cx="915" cy="85" r="25" fill="none" stroke="#2c3e50" stroke-width="1" opacity="0.3" />
+    <polygon points="915,65 911.25,85 918.75,85" fill="#2c3e50" />
+    <polygon points="915,105 911.25,85 918.75,85" fill="none" stroke="#2c3e50" stroke-width="1" />
+    <line x1="901" y1="85" x2="929" y2="85" stroke="#2c3e50" stroke-width="1" />
+    <text x="915" y="57.5" font-size="10" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-weight="bold">N</text>
+    <text x="915" y="112.5" font-size="8" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">S</text>
+    <text x="942.5" y="85" font-size="8" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">E</text>
+    <text x="887.5" y="85" font-size="8" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">W</text>
+    <text x="915" y="110" font-size="6" fill="#e74c3c" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">STREET</text>
+  </g>
 </svg>

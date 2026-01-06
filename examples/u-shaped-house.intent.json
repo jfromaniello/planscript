@@ -1,0 +1,143 @@
+{
+  "$comment": "U-shaped house with central courtyard. Entry foyer in center, kitchen and living on sides, bedrooms in back wings.",
+  "units": "m",
+  "footprint": {
+    "kind": "polygon",
+    "points": [
+      [0, 0],
+      [18, 0],
+      [18, 14],
+      [12, 14],
+      [12, 5],
+      [6, 5],
+      [6, 14],
+      [0, 14]
+    ]
+  },
+  "frontEdge": "south",
+  "gardenEdge": "north",
+  "defaults": {
+    "doorWidth": 0.9,
+    "windowWidth": 1.5,
+    "exteriorDoorWidth": 1.1
+  },
+  "bands": [
+    { "id": "west", "targetWidth": 6, "minWidth": 6, "maxWidth": 6 },
+    { "id": "center", "targetWidth": 6, "minWidth": 6, "maxWidth": 6 },
+    { "id": "east", "targetWidth": 6, "minWidth": 6, "maxWidth": 6 }
+  ],
+  "depths": [
+    { "id": "front", "targetDepth": 5, "minDepth": 5, "maxDepth": 5 },
+    { "id": "back", "targetDepth": 9 }
+  ],
+  "rooms": [
+    {
+      "id": "foyer",
+      "type": "foyer",
+      "label": "Entry Foyer",
+      "minArea": 20,
+      "targetArea": 28,
+      "minWidth": 2.5,
+      "preferredBands": ["center"],
+      "preferredDepths": ["front"],
+      "mustTouchEdge": "south",
+      "hasExteriorDoor": true,
+      "isCirculation": true
+    },
+    {
+      "id": "living",
+      "type": "living",
+      "label": "Living Room",
+      "minArea": 24,
+      "targetArea": 30,
+      "preferredBands": ["east"],
+      "preferredDepths": ["front"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "south",
+      "adjacentTo": ["foyer"],
+      "isCirculation": true
+    },
+    {
+      "id": "kitchen",
+      "type": "kitchen",
+      "label": "Kitchen",
+      "minArea": 20,
+      "targetArea": 26,
+      "preferredBands": ["west"],
+      "preferredDepths": ["front"],
+      "mustTouchExterior": true,
+      "mustTouchEdge": "south",
+      "adjacentTo": ["foyer"],
+      "isCirculation": true
+    },
+    {
+      "id": "master",
+      "type": "bedroom",
+      "label": "Master Bedroom",
+      "minArea": 24,
+      "targetArea": 36,
+      "preferredBands": ["east"],
+      "preferredDepths": ["back"],
+      "mustTouchExterior": true,
+      "adjacentTo": ["living"]
+    },
+    {
+      "id": "ensuite",
+      "type": "ensuite",
+      "label": "Master Ensuite",
+      "minArea": 4,
+      "targetArea": 6,
+      "preferredBands": ["east"],
+      "preferredDepths": ["back"],
+      "adjacentTo": ["master"],
+      "isEnsuite": true
+    },
+    {
+      "id": "west_hall",
+      "type": "corridor",
+      "label": "West Hall",
+      "minArea": 10,
+      "targetArea": 15,
+      "minWidth": 1.2,
+      "maxWidth": 2,
+      "preferredBands": ["west"],
+      "preferredDepths": ["back"],
+      "adjacentTo": ["kitchen"],
+      "isCirculation": true
+    },
+    {
+      "id": "bedroom1",
+      "type": "bedroom",
+      "label": "Bedroom 2",
+      "minArea": 14,
+      "targetArea": 20,
+      "preferredBands": ["west"],
+      "preferredDepths": ["back"],
+      "mustTouchExterior": true,
+      "adjacentTo": ["west_hall"]
+    },
+    {
+      "id": "bath",
+      "type": "bath",
+      "label": "Shared Bathroom",
+      "minArea": 5,
+      "targetArea": 7,
+      "preferredBands": ["west"],
+      "preferredDepths": ["back"],
+      "adjacentTo": ["west_hall"],
+      "isEnsuite": false
+    }
+  ],
+  "hard": {
+    "noOverlap": true,
+    "insideFootprint": true,
+    "allRoomsReachable": true
+  },
+  "accessRulePreset": "open_plan",
+  "weights": {
+    "adjacencySatisfaction": 5,
+    "respectPreferredZones": 4,
+    "maximizeExteriorGlazing": 2,
+    "bathroomClustering": 2
+  }
+}

@@ -239,3 +239,56 @@ Minimal dependencies by design:
 - **vitest**: Testing
 
 No runtime dependencies for the core library.
+
+## Solver Development Philosophy
+
+The solver (`src/solver/`) converts high-level intent JSON into valid PlanScript. When working on the solver, follow these principles:
+
+### The Solver Adapts to Intents, Not Vice Versa
+
+**CRITICAL**: When the solver fails on a reasonable architectural intent, the problem is in the solver, not the intent. Do NOT modify intent files to work around solver limitations.
+
+**Bad approach**:
+```
+Solver fails on shared bathroom → Change intent to make it an ensuite
+```
+
+**Good approach**:
+```
+Solver fails on shared bathroom → Fix solver to handle shared bathrooms
+                                → OR fail with clear explanation if architecturally impossible
+```
+
+### When Intents Are Architecturally Impossible
+
+Some intents are genuinely impossible due to architectural constraints. In these cases:
+
+1. **The solver should FAIL**, not produce invalid layouts
+2. **Error messages should explain WHY** it's impossible
+3. **Suggest fixes** when possible
+
+Example of an impossible intent:
+- West wing (6m wide, linear) with: Kitchen (circulation), Shared Bath, Bedroom
+- Shared bath needs circulation access, bedroom needs circulation access
+- In a linear wing, only one can be adjacent to kitchen
+- Bath can't be accessed through bedroom (not circulation)
+- Bedroom can't be accessed through bath (architectural rule)
+
+**Correct solver behavior**: Fail with message like:
+> "Cannot place shared bath in west/back: requires circulation access but bedroom1 blocks the only path from kitchen. Consider adding a hall/corridor in the west wing."
+
+### Debugging the Solver
+
+Use `--inspect` flag to understand solver decisions:
+
+```bash
+node dist/cli.js input.intent.json --inspect
+```
+
+This shows:
+- Room ordering with priority breakdown
+- Candidate placements and rejection reasons
+- Door placement decisions
+- Access/reachability analysis
+
+**Do NOT write throwaway debug scripts** - if you need visibility into solver behavior, use `--inspect` or improve its output.

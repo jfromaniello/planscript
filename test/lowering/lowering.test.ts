@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parse } from '../parser/index.js';
-import { lower, LoweringError } from './index.js';
+import { parse } from '../../src/parser/index.js';
+import { lower, LoweringError } from '../../src/lowering/index.js';
 
 describe('Lowering', () => {
   describe('Footprint Lowering', () => {

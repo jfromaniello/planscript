@@ -21,6 +21,9 @@
     <path d="M 245.00 485.00 L 415.00 485.00 L 415.00 442.50 L 245.00 442.50 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" />
     <path d="M 415.00 442.50 L 585.00 442.50 L 585.00 315.00 L 415.00 315.00 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" />
   
+  <!-- Courtyards -->
+  
+  
   <!-- Walls -->
   <line x1="245.00" y1="485.00" x2="415.00" y2="485.00" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
     <line x1="245.00" y1="315.00" x2="415.00" y2="315.00" stroke="#2c3e50" stroke-width="3" stroke-linecap="round" />
@@ -72,5 +75,8 @@
     <text x="500.00" y="378.75" font-size="14" fill="#2c3e50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif">Corridor</text>
   
   <!-- Dimensions -->
+  
+  
+  <!-- Compass / Orientation -->
   
 </svg>

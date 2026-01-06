@@ -230,6 +230,66 @@ PlanScript is designed to be **LLM-friendly**. When asking ChatGPT, Claude, or o
 
 The deterministic nature means: **LLM generates → Compiler validates → LLM fixes → Repeat until valid**
 
+## 🧠 Intent-Based Solver
+
+For an even higher-level approach, use the **solver** to generate PlanScript from a JSON intent:
+
+```bash
+# Generate PlanScript and SVG from intent
+planscript intent.json --out house.psc --svg house.svg
+```
+
+Instead of specifying exact coordinates, describe **what you want**:
+
+```json
+{
+  "units": "m",
+  "footprint": { "kind": "rect", "min": [0, 0], "max": [14, 10] },
+  "frontEdge": "south",
+  "defaults": { "doorWidth": 0.9, "windowWidth": 1.5 },
+  "rooms": [
+    { "id": "hall", "type": "hall", "minArea": 12, "hasExteriorDoor": true },
+    { "id": "living", "type": "living", "minArea": 20, "adjacentTo": ["hall"] },
+    { "id": "kitchen", "type": "kitchen", "minArea": 12, "adjacentTo": ["living"] },
+    { "id": "bedroom", "type": "bedroom", "minArea": 14, "adjacentTo": ["hall"] },
+    { "id": "bath", "type": "bath", "minArea": 5, "adjacentTo": ["hall"] }
+  ],
+  "hard": { "noOverlap": true, "insideFootprint": true, "allRoomsReachable": true }
+}
+```
+
+The solver handles:
+- **Room placement** — Finds positions that satisfy constraints
+- **Door placement** — Connects rooms following architectural rules
+- **Window placement** — Adds windows to exterior walls
+- **Validation** — Ensures all rooms are reachable
+
+See the **[Intent Reference](INTENT_REFERENCE.md)** for complete documentation.
+
+### Solver Features
+
+| Feature | Description |
+|---------|-------------|
+| Bands & Depths | Divide footprint into zones (private/public/circulation) |
+| Adjacency | Specify which rooms should be next to each other |
+| Access Rules | Control door placement (e.g., bedrooms only from hallway) |
+| Polygon Footprints | L-shaped, U-shaped, and irregular buildings |
+| Soft Constraints | Tune preferences (glazing, compactness, etc.) |
+
+### Library Usage
+
+```typescript
+import { solve, parseIntent } from 'planscript/solver';
+
+const intent = parseIntent(jsonString);
+const result = solve(intent);
+
+if (result.success) {
+  console.log(result.planScript);  // Generated PlanScript code
+  console.log(result.state);       // Room placements and doors
+}
+```
+
 ## 🔌 VS Code Extension
 
 The PlanScript VS Code extension provides:

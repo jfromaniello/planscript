@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { parse } from '../parser/index.js';
-import { lower } from '../lowering/index.js';
-import { generateGeometry, calculatePolygonArea, distance, pointsEqual, segmentsOverlap } from './index.js';
+import { parse } from '../../src/parser/index.js';
+import { lower } from '../../src/lowering/index.js';
+import { generateGeometry, calculatePolygonArea, distance, pointsEqual, segmentsOverlap } from '../../src/geometry/index.js';
 
 describe('Geometry Utilities', () => {
   describe('calculatePolygonArea', () => {
